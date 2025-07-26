@@ -233,8 +233,9 @@ func TestManagerGetProviderConfig(t *testing.T) {
 
 	// Create manager with custom config path
 	manager := &Manager{
-		configDir:  tempDir,
-		configPath: filepath.Join(tempDir, configFileName),
+		configDir:         tempDir,
+		configPath:        filepath.Join(tempDir, configFileName),
+		credentialManager: NewCredentialManager(tempDir),
 	}
 
 	// Create test configuration with provider

@@ -71,6 +71,10 @@ type PluginManager interface {
 	RegisterPlugin(plugin ContextPlugin) error
 	LoadPlugins(pluginDir string) error
 	GetPlugins() []ContextPlugin
+	ExecutePlugins(ctx context.Context, baseContext *types.Context) map[string]interface{}
+	RemovePlugin(name string) error
+	GetPlugin(name string) (ContextPlugin, error)
+	Clear()
 }
 
 // CLI defines the interface for the command-line interface
