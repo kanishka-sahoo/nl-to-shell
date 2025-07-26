@@ -85,15 +85,15 @@
     - Write tests for local and remote Ollama scenarios
     - _Requirements: 3.1, 3.3_
 
-- [ ] 5. Build safety validation system
-  - [ ] 5.1 Create safety validator core
+- [-] 5. Build safety validation system
+  - [x] 5.1 Create safety validator core
     - Define SafetyValidator interface and SafetyResult struct
     - Implement DangerLevel enum and DangerousPattern struct
     - Create pattern-based dangerous command detection
     - Write comprehensive unit tests for safety patterns
     - _Requirements: 4.1, 4.4_
 
-  - [ ] 5.2 Implement dangerous command patterns
+  - [x] 5.2 Implement dangerous command patterns
     - Define regex patterns for file deletion, system modification, and control commands
     - Add context-aware analysis for commands like rm in different directories
     - Implement user confirmation requirements based on danger levels
