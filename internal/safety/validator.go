@@ -140,12 +140,10 @@ func (v *Validator) validateCommandString(cmd string) *types.SafetyResult {
 
 	var maxDangerLevel types.DangerLevel = types.Safe
 	var warnings []string
-	var matchedPatterns []types.DangerousPattern
 
 	// Check against all patterns
 	for _, pattern := range v.patterns {
 		if pattern.Pattern.MatchString(normalizedCmd) {
-			matchedPatterns = append(matchedPatterns, pattern)
 			warnings = append(warnings, pattern.Description)
 
 			if pattern.Level > maxDangerLevel {
