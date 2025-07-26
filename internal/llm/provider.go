@@ -169,9 +169,10 @@ func (f *ProviderFactory) CreateProvider(providerName string, config *types.Prov
 
 // BaseProvider provides common functionality for all providers
 type BaseProvider struct {
-	config      *types.ProviderConfig
-	retryConfig *RetryConfig
-	httpClient  *http.Client
+	config        *types.ProviderConfig
+	retryConfig   *RetryConfig
+	httpClient    *http.Client
+	promptBuilder *PromptBuilder
 }
 
 // NewBaseProvider creates a new base provider
@@ -182,8 +183,9 @@ func NewBaseProvider(config *types.ProviderConfig, retryConfig *RetryConfig) *Ba
 	}
 
 	return &BaseProvider{
-		config:      config,
-		retryConfig: retryConfig,
+		config:        config,
+		retryConfig:   retryConfig,
+		promptBuilder: NewPromptBuilder(),
 		httpClient: &http.Client{
 			Timeout: timeout,
 		},

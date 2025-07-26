@@ -380,7 +380,7 @@ func TestAnthropicProvider_BuildSystemPrompt(t *testing.T) {
 		},
 	}
 
-	prompt := provider.buildSystemPrompt(context)
+	prompt := provider.promptBuilder.BuildSystemPrompt(context)
 
 	// Check that the prompt contains expected elements
 	if !strings.Contains(prompt, "expert shell command generator") {
