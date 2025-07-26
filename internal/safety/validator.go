@@ -3,6 +3,7 @@ package safety
 import (
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/nl-to-shell/nl-to-shell/internal/interfaces"
 	"github.com/nl-to-shell/nl-to-shell/internal/types"
@@ -37,6 +38,79 @@ func (v *Validator) ValidateCommand(cmd *types.Command) (*types.SafetyResult, er
 	}
 
 	return v.validateCommandString(commandText), nil
+}
+
+// ValidateCommandWithOptions validates a command for safety with bypass options
+func (v *Validator) ValidateCommandWithOptions(cmd *types.Command, opts *types.ValidationOptions) (*types.SafetyResult, error) {
+	// First perform normal validation
+	result, err := v.ValidateCommand(cmd)
+	if err != nil {
+		return result, err
+	}
+
+	// If no options provided, return normal result
+	if opts == nil {
+		return result, nil
+	}
+
+	// If command is nil, we can't do any further processing
+	if cmd == nil {
+		return result, nil
+	}
+
+	commandText := cmd.Generated
+	if commandText == "" {
+		commandText = cmd.Original
+	}
+
+	// Create audit entry
+	auditEntry := &types.AuditEntry{
+		Timestamp:   time.Now(),
+		Command:     commandText,
+		UserID:      opts.UserID,
+		DangerLevel: result.DangerLevel,
+		Reason:      opts.Reason,
+		SessionID:   "", // TODO: Add session tracking
+	}
+
+	// Determine if bypass should be applied
+	shouldBypass := opts.SkipConfirmation &&
+		result.DangerLevel <= opts.BypassLevel &&
+		result.DangerLevel > types.Safe
+
+	if shouldBypass {
+		// Apply bypass
+		result.RequiresConfirmation = false
+		result.Bypassed = true
+		result.Warnings = append(result.Warnings, "Safety check bypassed by user")
+		auditEntry.Action = types.AuditActionBypassed
+
+		// Log audit event if logger is provided
+		if opts.AuditLogger != nil {
+			if logErr := opts.AuditLogger.LogAuditEvent(auditEntry); logErr != nil {
+				// Don't fail validation due to logging error, but add warning
+				result.Warnings = append(result.Warnings, "Failed to log audit event: "+logErr.Error())
+			}
+		}
+	} else {
+		// Normal validation or blocked
+		if result.DangerLevel > types.Safe {
+			auditEntry.Action = types.AuditActionValidated
+		} else {
+			auditEntry.Action = types.AuditActionValidated
+		}
+
+		// Log audit event if logger is provided and configured to audit all
+		if opts.AuditLogger != nil {
+			if logErr := opts.AuditLogger.LogAuditEvent(auditEntry); logErr != nil {
+				// Don't fail validation due to logging error
+				result.Warnings = append(result.Warnings, "Failed to log audit event: "+logErr.Error())
+			}
+		}
+	}
+
+	result.AuditEntry = auditEntry
+	return result, nil
 }
 
 // IsDangerous checks if a command string is dangerous

@@ -1,6 +1,8 @@
 package safety
 
 import (
+	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -756,5 +758,370 @@ func TestValidateCommand_UserConfirmationRequirements(t *testing.T) {
 					tc.requiresConfirmation, tc.command, tc.description, result.RequiresConfirmation)
 			}
 		})
+	}
+}
+
+func TestValidateCommandWithOptions_NoOptions(t *testing.T) {
+	validator := NewValidator()
+	cmd := &types.Command{
+		ID:        "test",
+		Generated: "rm file.txt",
+		Timestamp: time.Now(),
+	}
+
+	// Test with nil options
+	result, err := validator.ValidateCommandWithOptions(cmd, nil)
+	if err != nil {
+		t.Errorf("ValidateCommandWithOptions() returned error: %v", err)
+	}
+
+	// Should behave like normal validation
+	if result.Bypassed {
+		t.Error("Expected command not to be bypassed when options are nil")
+	}
+
+	if result.AuditEntry != nil {
+		t.Error("Expected no audit entry when options are nil")
+	}
+}
+
+func TestValidateCommandWithOptions_BypassWarningLevel(t *testing.T) {
+	validator := NewValidator()
+	cmd := &types.Command{
+		ID:        "test",
+		Generated: "rm file.txt", // Warning level command
+		Timestamp: time.Now(),
+	}
+
+	auditLogger := NewNoOpAuditLogger()
+	opts := &types.ValidationOptions{
+		SkipConfirmation: true,
+		BypassLevel:      types.Warning,
+		AuditLogger:      auditLogger,
+		UserID:           "test-user",
+		Reason:           "Test bypass",
+	}
+
+	result, err := validator.ValidateCommandWithOptions(cmd, opts)
+	if err != nil {
+		t.Errorf("ValidateCommandWithOptions() returned error: %v", err)
+	}
+
+	if !result.Bypassed {
+		t.Error("Expected command to be bypassed for Warning level")
+	}
+
+	if result.RequiresConfirmation {
+		t.Error("Expected bypassed command to not require confirmation")
+	}
+
+	if result.AuditEntry == nil {
+		t.Error("Expected audit entry to be created")
+	} else {
+		if result.AuditEntry.Action != types.AuditActionBypassed {
+			t.Errorf("Expected audit action to be Bypassed, got %v", result.AuditEntry.Action)
+		}
+		if result.AuditEntry.UserID != "test-user" {
+			t.Errorf("Expected user ID to be 'test-user', got %q", result.AuditEntry.UserID)
+		}
+	}
+
+	// Check for bypass warning
+	found := false
+	for _, warning := range result.Warnings {
+		if strings.Contains(warning, "bypassed") {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Error("Expected bypass warning in result warnings")
+	}
+}
+
+func TestValidateCommandWithOptions_BypassDangerousLevel(t *testing.T) {
+	validator := NewValidator()
+	cmd := &types.Command{
+		ID:        "test",
+		Generated: "sudo rm -rf /tmp/*", // Dangerous level command
+		Timestamp: time.Now(),
+	}
+
+	auditLogger := NewNoOpAuditLogger()
+	opts := &types.ValidationOptions{
+		SkipConfirmation: true,
+		BypassLevel:      types.Dangerous,
+		AuditLogger:      auditLogger,
+		UserID:           "admin-user",
+		Reason:           "Maintenance task",
+	}
+
+	result, err := validator.ValidateCommandWithOptions(cmd, opts)
+	if err != nil {
+		t.Errorf("ValidateCommandWithOptions() returned error: %v", err)
+	}
+
+	if !result.Bypassed {
+		t.Error("Expected dangerous command to be bypassed when bypass level is Dangerous")
+	}
+
+	if result.RequiresConfirmation {
+		t.Error("Expected bypassed dangerous command to not require confirmation")
+	}
+}
+
+func TestValidateCommandWithOptions_NoBypassCriticalLevel(t *testing.T) {
+	validator := NewValidator()
+	cmd := &types.Command{
+		ID:        "test",
+		Generated: "rm -rf /", // Critical level command
+		Timestamp: time.Now(),
+	}
+
+	auditLogger := NewNoOpAuditLogger()
+	opts := &types.ValidationOptions{
+		SkipConfirmation: true,
+		BypassLevel:      types.Warning, // Lower than command's danger level
+		AuditLogger:      auditLogger,
+		UserID:           "test-user",
+		Reason:           "Test bypass",
+	}
+
+	result, err := validator.ValidateCommandWithOptions(cmd, opts)
+	if err != nil {
+		t.Errorf("ValidateCommandWithOptions() returned error: %v", err)
+	}
+
+	if result.Bypassed {
+		t.Error("Expected critical command not to be bypassed when bypass level is Warning")
+	}
+
+	if !result.RequiresConfirmation {
+		t.Error("Expected critical command to still require confirmation")
+	}
+
+	if result.AuditEntry == nil {
+		t.Error("Expected audit entry to be created")
+	} else {
+		if result.AuditEntry.Action != types.AuditActionValidated {
+			t.Errorf("Expected audit action to be Validated, got %v", result.AuditEntry.Action)
+		}
+	}
+}
+
+func TestValidateCommandWithOptions_SafeCommandNoBypass(t *testing.T) {
+	validator := NewValidator()
+	cmd := &types.Command{
+		ID:        "test",
+		Generated: "ls -la", // Safe command
+		Timestamp: time.Now(),
+	}
+
+	auditLogger := NewNoOpAuditLogger()
+	opts := &types.ValidationOptions{
+		SkipConfirmation: true,
+		BypassLevel:      types.Warning,
+		AuditLogger:      auditLogger,
+		UserID:           "test-user",
+		Reason:           "Test bypass",
+	}
+
+	result, err := validator.ValidateCommandWithOptions(cmd, opts)
+	if err != nil {
+		t.Errorf("ValidateCommandWithOptions() returned error: %v", err)
+	}
+
+	// Safe commands should not be "bypassed" since they don't need confirmation anyway
+	if result.Bypassed {
+		t.Error("Expected safe command not to be marked as bypassed")
+	}
+
+	if result.RequiresConfirmation {
+		t.Error("Expected safe command to not require confirmation")
+	}
+
+	if result.AuditEntry == nil {
+		t.Error("Expected audit entry to be created")
+	} else {
+		if result.AuditEntry.Action != types.AuditActionValidated {
+			t.Errorf("Expected audit action to be Validated, got %v", result.AuditEntry.Action)
+		}
+	}
+}
+
+func TestValidateCommandWithOptions_NoSkipConfirmation(t *testing.T) {
+	validator := NewValidator()
+	cmd := &types.Command{
+		ID:        "test",
+		Generated: "rm file.txt", // Warning level command
+		Timestamp: time.Now(),
+	}
+
+	auditLogger := NewNoOpAuditLogger()
+	opts := &types.ValidationOptions{
+		SkipConfirmation: false, // Don't skip confirmation
+		BypassLevel:      types.Warning,
+		AuditLogger:      auditLogger,
+		UserID:           "test-user",
+		Reason:           "Test no bypass",
+	}
+
+	result, err := validator.ValidateCommandWithOptions(cmd, opts)
+	if err != nil {
+		t.Errorf("ValidateCommandWithOptions() returned error: %v", err)
+	}
+
+	if result.Bypassed {
+		t.Error("Expected command not to be bypassed when SkipConfirmation is false")
+	}
+
+	if !result.RequiresConfirmation {
+		t.Error("Expected command to still require confirmation")
+	}
+}
+
+func TestValidateCommandWithOptions_NilCommand(t *testing.T) {
+	validator := NewValidator()
+
+	auditLogger := NewNoOpAuditLogger()
+	opts := &types.ValidationOptions{
+		SkipConfirmation: true,
+		BypassLevel:      types.Critical,
+		AuditLogger:      auditLogger,
+		UserID:           "test-user",
+		Reason:           "Test bypass",
+	}
+
+	result, err := validator.ValidateCommandWithOptions(nil, opts)
+	if err != nil {
+		t.Errorf("ValidateCommandWithOptions() returned error: %v", err)
+	}
+
+	// Nil command should still be critical and not bypassed
+	if result.Bypassed {
+		t.Error("Expected nil command not to be bypassed")
+	}
+
+	if !result.RequiresConfirmation {
+		t.Error("Expected nil command to require confirmation")
+	}
+
+	if result.DangerLevel != types.Critical {
+		t.Errorf("Expected Critical danger level for nil command, got %v", result.DangerLevel)
+	}
+}
+
+// Test audit logging functionality
+func TestAuditLogger(t *testing.T) {
+	// Create temporary file for testing
+	tempDir := t.TempDir()
+	logPath := filepath.Join(tempDir, "audit.log")
+
+	auditLogger, err := NewFileAuditLogger(logPath)
+	if err != nil {
+		t.Fatalf("Failed to create audit logger: %v", err)
+	}
+
+	// Create test audit entries
+	entry1 := &types.AuditEntry{
+		Timestamp:   time.Now(),
+		Command:     "rm file.txt",
+		UserID:      "user1",
+		Action:      types.AuditActionBypassed,
+		DangerLevel: types.Warning,
+		Reason:      "Test bypass",
+		SessionID:   "session1",
+	}
+
+	entry2 := &types.AuditEntry{
+		Timestamp:   time.Now().Add(time.Minute),
+		Command:     "ls -la",
+		UserID:      "user2",
+		Action:      types.AuditActionValidated,
+		DangerLevel: types.Safe,
+		Reason:      "",
+		SessionID:   "session2",
+	}
+
+	// Log entries
+	if err := auditLogger.LogAuditEvent(entry1); err != nil {
+		t.Errorf("Failed to log audit entry 1: %v", err)
+	}
+
+	if err := auditLogger.LogAuditEvent(entry2); err != nil {
+		t.Errorf("Failed to log audit entry 2: %v", err)
+	}
+
+	// Retrieve all entries
+	entries, err := auditLogger.GetAuditLog(nil)
+	if err != nil {
+		t.Errorf("Failed to get audit log: %v", err)
+	}
+
+	if len(entries) != 2 {
+		t.Errorf("Expected 2 audit entries, got %d", len(entries))
+	}
+
+	// Test filtering by user
+	userFilter := &types.AuditFilter{
+		UserID: "user1",
+	}
+
+	filteredEntries, err := auditLogger.GetAuditLog(userFilter)
+	if err != nil {
+		t.Errorf("Failed to get filtered audit log: %v", err)
+	}
+
+	if len(filteredEntries) != 1 {
+		t.Errorf("Expected 1 filtered audit entry, got %d", len(filteredEntries))
+	}
+
+	if filteredEntries[0].UserID != "user1" {
+		t.Errorf("Expected filtered entry to be for user1, got %s", filteredEntries[0].UserID)
+	}
+
+	// Test filtering by action
+	actionFilter := &types.AuditFilter{
+		Action: &[]types.AuditAction{types.AuditActionBypassed}[0],
+	}
+
+	actionFilteredEntries, err := auditLogger.GetAuditLog(actionFilter)
+	if err != nil {
+		t.Errorf("Failed to get action-filtered audit log: %v", err)
+	}
+
+	if len(actionFilteredEntries) != 1 {
+		t.Errorf("Expected 1 action-filtered audit entry, got %d", len(actionFilteredEntries))
+	}
+
+	if actionFilteredEntries[0].Action != types.AuditActionBypassed {
+		t.Errorf("Expected filtered entry to be bypassed action, got %v", actionFilteredEntries[0].Action)
+	}
+}
+
+func TestNoOpAuditLogger(t *testing.T) {
+	logger := NewNoOpAuditLogger()
+
+	entry := &types.AuditEntry{
+		Timestamp:   time.Now(),
+		Command:     "test command",
+		UserID:      "test-user",
+		Action:      types.AuditActionValidated,
+		DangerLevel: types.Safe,
+	}
+
+	// Should not return error
+	if err := logger.LogAuditEvent(entry); err != nil {
+		t.Errorf("NoOpAuditLogger.LogAuditEvent() returned error: %v", err)
+	}
+
+	// Should return empty slice
+	entries, err := logger.GetAuditLog(nil)
+	if err != nil {
+		t.Errorf("NoOpAuditLogger.GetAuditLog() returned error: %v", err)
+	}
+
+	if len(entries) != 0 {
+		t.Errorf("Expected NoOpAuditLogger to return empty slice, got %d entries", len(entries))
 	}
 }

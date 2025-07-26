@@ -85,7 +85,7 @@
     - Write tests for local and remote Ollama scenarios
     - _Requirements: 3.1, 3.3_
 
-- [-] 5. Build safety validation system
+- [x] 5. Build safety validation system
   - [x] 5.1 Create safety validator core
     - Define SafetyValidator interface and SafetyResult struct
     - Implement DangerLevel enum and DangerousPattern struct
@@ -100,7 +100,7 @@
     - Write tests covering all protected operations (rm, dd, shutdown, etc.)
     - _Requirements: 4.1, 4.4_
 
-  - [ ] 5.3 Add bypass mechanisms for advanced users
+  - [x] 5.3 Add bypass mechanisms for advanced users
     - Implement configuration options for skipping confirmations
     - Add runtime flags for bypassing safety checks
     - Create audit logging for bypassed safety checks

@@ -79,6 +79,79 @@ type SafetyResult struct {
 	DangerLevel          DangerLevel
 	Warnings             []string
 	RequiresConfirmation bool
+	Bypassed             bool
+	AuditEntry           *AuditEntry
+}
+
+// ValidationOptions controls how safety validation is performed
+type ValidationOptions struct {
+	SkipConfirmation bool
+	BypassLevel      DangerLevel // Commands at or below this level can be bypassed
+	AuditLogger      AuditLogger // Logger for audit events
+	UserID           string      // User performing the bypass
+	Reason           string      // Reason for bypass
+}
+
+// AuditEntry represents a security audit log entry
+type AuditEntry struct {
+	Timestamp   time.Time
+	Command     string
+	UserID      string
+	Action      AuditAction
+	DangerLevel DangerLevel
+	Reason      string
+	SourceIP    string
+	SessionID   string
+}
+
+// AuditAction represents the type of audit action
+type AuditAction int
+
+const (
+	AuditActionValidated AuditAction = iota
+	AuditActionBypassed
+	AuditActionBlocked
+	AuditActionOverridden
+)
+
+// String returns the string representation of AuditAction
+func (a AuditAction) String() string {
+	switch a {
+	case AuditActionValidated:
+		return "Validated"
+	case AuditActionBypassed:
+		return "Bypassed"
+	case AuditActionBlocked:
+		return "Blocked"
+	case AuditActionOverridden:
+		return "Overridden"
+	default:
+		return "Unknown"
+	}
+}
+
+// AuditLogger defines the interface for audit logging
+type AuditLogger interface {
+	LogAuditEvent(entry *AuditEntry) error
+	GetAuditLog(filter *AuditFilter) ([]*AuditEntry, error)
+}
+
+// AuditFilter represents filtering criteria for audit logs
+type AuditFilter struct {
+	StartTime   *time.Time
+	EndTime     *time.Time
+	UserID      string
+	Action      *AuditAction
+	DangerLevel *DangerLevel
+}
+
+// BypassConfig represents bypass configuration for safety validation
+type BypassConfig struct {
+	Enabled       bool
+	MaxLevel      DangerLevel // Maximum danger level that can be bypassed
+	RequireReason bool        // Whether a reason is required for bypass
+	AuditAll      bool        // Whether to audit all commands or just bypassed ones
+	TrustedUsers  []string    // List of users allowed to bypass
 }
 
 // DangerousPattern represents a pattern for dangerous command detection
@@ -97,6 +170,22 @@ const (
 	Dangerous
 	Critical
 )
+
+// String returns the string representation of DangerLevel
+func (d DangerLevel) String() string {
+	switch d {
+	case Safe:
+		return "Safe"
+	case Warning:
+		return "Warning"
+	case Dangerous:
+		return "Dangerous"
+	case Critical:
+		return "Critical"
+	default:
+		return "Unknown"
+	}
+}
 
 // DryRunResult represents the result of a dry run
 type DryRunResult struct {
@@ -153,6 +242,7 @@ type UserPreferences struct {
 	MaxFileListSize  int
 	EnablePlugins    bool
 	AutoUpdate       bool
+	Bypass           BypassConfig
 }
 
 // UpdateSettings controls update behavior

@@ -22,6 +22,7 @@ type ContextGatherer interface {
 // SafetyValidator defines the interface for validating command safety
 type SafetyValidator interface {
 	ValidateCommand(cmd *types.Command) (*types.SafetyResult, error)
+	ValidateCommandWithOptions(cmd *types.Command, opts *types.ValidationOptions) (*types.SafetyResult, error)
 	IsDangerous(cmd string) bool
 	GetDangerousPatterns() []types.DangerousPattern
 }
