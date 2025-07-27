@@ -301,23 +301,179 @@ const (
 	ErrTypeConfiguration
 	ErrTypeNetwork
 	ErrTypePermission
+	ErrTypePlugin
+	ErrTypeContext
+	ErrTypeUpdate
+	ErrTypeSafety
+	ErrTypeTimeout
+	ErrTypeAuth
+	ErrTypeInternal
 )
+
+// String returns the string representation of ErrorType
+func (e ErrorType) String() string {
+	switch e {
+	case ErrTypeValidation:
+		return "Validation"
+	case ErrTypeProvider:
+		return "Provider"
+	case ErrTypeExecution:
+		return "Execution"
+	case ErrTypeConfiguration:
+		return "Configuration"
+	case ErrTypeNetwork:
+		return "Network"
+	case ErrTypePermission:
+		return "Permission"
+	case ErrTypePlugin:
+		return "Plugin"
+	case ErrTypeContext:
+		return "Context"
+	case ErrTypeUpdate:
+		return "Update"
+	case ErrTypeSafety:
+		return "Safety"
+	case ErrTypeTimeout:
+		return "Timeout"
+	case ErrTypeAuth:
+		return "Authentication"
+	case ErrTypeInternal:
+		return "Internal"
+	default:
+		return "Unknown"
+	}
+}
+
+// ErrorSeverity represents the severity level of an error
+type ErrorSeverity int
+
+const (
+	SeverityInfo ErrorSeverity = iota
+	SeverityWarning
+	SeverityError
+	SeverityCritical
+)
+
+// String returns the string representation of ErrorSeverity
+func (s ErrorSeverity) String() string {
+	switch s {
+	case SeverityInfo:
+		return "Info"
+	case SeverityWarning:
+		return "Warning"
+	case SeverityError:
+		return "Error"
+	case SeverityCritical:
+		return "Critical"
+	default:
+		return "Unknown"
+	}
+}
 
 // NLShellError represents a structured error with context
 type NLShellError struct {
-	Type    ErrorType
-	Message string
-	Cause   error
-	Context map[string]interface{}
+	Type      ErrorType
+	Severity  ErrorSeverity
+	Message   string
+	Cause     error
+	Context   map[string]interface{}
+	Timestamp time.Time
+	Component string // Component where the error occurred
+	Operation string // Operation being performed when error occurred
+	UserID    string // User ID if available
+	SessionID string // Session ID if available
 }
 
+// Error implements the error interface
 func (e *NLShellError) Error() string {
 	if e.Cause != nil {
-		return fmt.Sprintf("%s: %v", e.Message, e.Cause)
+		return fmt.Sprintf("[%s] %s: %v", e.Type.String(), e.Message, e.Cause)
 	}
-	return e.Message
+	return fmt.Sprintf("[%s] %s", e.Type.String(), e.Message)
 }
 
+// Unwrap implements the error unwrapping interface
 func (e *NLShellError) Unwrap() error {
 	return e.Cause
+}
+
+// Is implements error comparison for errors.Is
+func (e *NLShellError) Is(target error) bool {
+	if t, ok := target.(*NLShellError); ok {
+		return e.Type == t.Type
+	}
+	return false
+}
+
+// WithContext adds context information to the error
+func (e *NLShellError) WithContext(key string, value interface{}) *NLShellError {
+	if e.Context == nil {
+		e.Context = make(map[string]interface{})
+	}
+	e.Context[key] = value
+	return e
+}
+
+// WithComponent sets the component where the error occurred
+func (e *NLShellError) WithComponent(component string) *NLShellError {
+	e.Component = component
+	return e
+}
+
+// WithOperation sets the operation being performed when error occurred
+func (e *NLShellError) WithOperation(operation string) *NLShellError {
+	e.Operation = operation
+	return e
+}
+
+// WithUserID sets the user ID associated with the error
+func (e *NLShellError) WithUserID(userID string) *NLShellError {
+	e.UserID = userID
+	return e
+}
+
+// WithSessionID sets the session ID associated with the error
+func (e *NLShellError) WithSessionID(sessionID string) *NLShellError {
+	e.SessionID = sessionID
+	return e
+}
+
+// GetContextValue retrieves a context value by key
+func (e *NLShellError) GetContextValue(key string) (interface{}, bool) {
+	if e.Context == nil {
+		return nil, false
+	}
+	value, exists := e.Context[key]
+	return value, exists
+}
+
+// ToMap converts the error to a map for structured logging
+func (e *NLShellError) ToMap() map[string]interface{} {
+	result := map[string]interface{}{
+		"type":      e.Type.String(),
+		"severity":  e.Severity.String(),
+		"message":   e.Message,
+		"timestamp": e.Timestamp,
+	}
+
+	if e.Component != "" {
+		result["component"] = e.Component
+	}
+	if e.Operation != "" {
+		result["operation"] = e.Operation
+	}
+	if e.UserID != "" {
+		result["user_id"] = e.UserID
+	}
+	if e.SessionID != "" {
+		result["session_id"] = e.SessionID
+	}
+	if e.Cause != nil {
+		result["cause"] = e.Cause.Error()
+	}
+	if e.Context != nil && len(e.Context) > 0 {
+		result["context"] = e.Context
+	}
+
+	return result
 }
