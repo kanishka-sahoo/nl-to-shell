@@ -16,6 +16,7 @@ import (
 	"github.com/nl-to-shell/nl-to-shell/internal/manager"
 	"github.com/nl-to-shell/nl-to-shell/internal/safety"
 	"github.com/nl-to-shell/nl-to-shell/internal/types"
+	"github.com/nl-to-shell/nl-to-shell/internal/updater"
 	"github.com/nl-to-shell/nl-to-shell/internal/validator"
 )
 
@@ -254,9 +255,7 @@ var checkCmd = &cobra.Command{
 	Use:   "check",
 	Short: "Check for available updates",
 	Long:  `Check if there are any available updates without installing them.`,
-	RunE: func(cmd *cobra.Command, args []string) error {
-		return fmt.Errorf("update checking not yet implemented")
-	},
+	RunE:  executeUpdateCheck,
 }
 
 // installCmd represents the update install command
@@ -264,9 +263,7 @@ var installCmd = &cobra.Command{
 	Use:   "install",
 	Short: "Install available updates",
 	Long:  `Install the latest available update.`,
-	RunE: func(cmd *cobra.Command, args []string) error {
-		return fmt.Errorf("update installation not yet implemented")
-	},
+	RunE:  executeUpdateInstall,
 }
 
 // versionCmd represents the version command
@@ -292,6 +289,11 @@ func init() {
 	// Add subcommands to update
 	updateCmd.AddCommand(checkCmd)
 	updateCmd.AddCommand(installCmd)
+
+	// Add flags to update commands
+	checkCmd.Flags().Bool("prerelease", false, "Include prerelease versions in update check")
+	installCmd.Flags().Bool("prerelease", false, "Allow installation of prerelease versions")
+	installCmd.Flags().Bool("no-backup", false, "Skip creating backup before update")
 }
 
 // GetGlobalFlags returns the current global flag values
@@ -498,6 +500,126 @@ func displayResults(result *types.FullResult, originalInput string) error {
 			}
 		}
 	}
+
+	return nil
+}
+
+// executeUpdateCheck handles the update check command
+func executeUpdateCheck(cmd *cobra.Command, args []string) error {
+	ctx := context.Background()
+
+	// Load configuration to check update settings
+	configManager := config.NewManager()
+	cfg, err := configManager.Load()
+	if err != nil {
+		if verbose {
+			fmt.Fprintf(os.Stderr, "Warning: Could not load configuration: %v\n", err)
+		}
+		// Use default configuration
+		cfg = &types.Config{
+			UpdateSettings: types.UpdateSettings{
+				AllowPrerelease: false,
+			},
+		}
+	}
+
+	// Check for prerelease flag
+	prerelease, _ := cmd.Flags().GetBool("prerelease")
+	if prerelease {
+		cfg.UpdateSettings.AllowPrerelease = true
+	}
+
+	// Create update manager
+	updateManager := updater.NewManager(Version, "nl-to-shell", "nl-to-shell")
+
+	fmt.Println("Checking for updates...")
+	if cfg.UpdateSettings.AllowPrerelease {
+		fmt.Println("(including prerelease versions)")
+	}
+
+	updateInfo, err := updateManager.CheckForUpdates(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to check for updates: %w", err)
+	}
+
+	fmt.Printf("Current version: %s\n", updateInfo.CurrentVersion)
+	fmt.Printf("Latest version: %s\n", updateInfo.LatestVersion)
+
+	if updateInfo.Available {
+		fmt.Println("✅ Update available!")
+		if updateInfo.ReleaseNotes != "" {
+			fmt.Println("\nRelease notes:")
+			fmt.Println(updateInfo.ReleaseNotes)
+		}
+		fmt.Println("\nTo install the update, run: nl-to-shell update install")
+	} else {
+		fmt.Println("✅ You are running the latest version")
+	}
+
+	return nil
+}
+
+// executeUpdateInstall handles the update install command
+func executeUpdateInstall(cmd *cobra.Command, args []string) error {
+	ctx := context.Background()
+
+	// Load configuration to check update settings
+	configManager := config.NewManager()
+	cfg, err := configManager.Load()
+	if err != nil {
+		if verbose {
+			fmt.Fprintf(os.Stderr, "Warning: Could not load configuration: %v\n", err)
+		}
+		// Use default configuration
+		cfg = &types.Config{
+			UpdateSettings: types.UpdateSettings{
+				AllowPrerelease:    false,
+				BackupBeforeUpdate: true,
+			},
+		}
+	}
+
+	// Check for flags
+	prerelease, _ := cmd.Flags().GetBool("prerelease")
+	if prerelease {
+		cfg.UpdateSettings.AllowPrerelease = true
+	}
+
+	noBackup, _ := cmd.Flags().GetBool("no-backup")
+	if noBackup {
+		cfg.UpdateSettings.BackupBeforeUpdate = false
+	}
+
+	// Create update manager
+	updateManager := updater.NewManager(Version, "nl-to-shell", "nl-to-shell")
+
+	fmt.Println("Checking for updates...")
+	if cfg.UpdateSettings.AllowPrerelease {
+		fmt.Println("(including prerelease versions)")
+	}
+
+	updateInfo, err := updateManager.CheckForUpdates(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to check for updates: %w", err)
+	}
+
+	if !updateInfo.Available {
+		fmt.Println("✅ You are already running the latest version")
+		return nil
+	}
+
+	fmt.Printf("Installing update from %s to %s...\n", updateInfo.CurrentVersion, updateInfo.LatestVersion)
+
+	if cfg.UpdateSettings.BackupBeforeUpdate {
+		fmt.Println("Creating backup before update...")
+	}
+
+	if err := updateManager.PerformUpdate(ctx, updateInfo); err != nil {
+		return fmt.Errorf("failed to install update: %w", err)
+	}
+
+	fmt.Println("✅ Update installed successfully!")
+	fmt.Println("Please restart nl-to-shell to use the new version.")
 
 	return nil
 }

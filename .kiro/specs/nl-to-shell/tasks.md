@@ -151,44 +151,44 @@
     - Write tests for session mode functionality
     - _Requirements: 8.1, 8.2, 8.3, 8.4_
 
-- [ ] 8. Implement update management
-  - [ ] 8.1 Create update manager core
+- [x] 8. Implement update management
+  - [x] 8.1 Create update manager core
     - Define UpdateManager interface and UpdateInfo struct
     - Implement version checking against GitHub releases
     - Add update availability detection
     - Write unit tests for update checking
     - _Requirements: 7.1, 7.2, 7.3_
 
-  - [ ] 8.2 Add update installation functionality
+  - [x] 8.2 Add update installation functionality
     - Implement cross-platform update installation
     - Add backup and recovery capabilities for safe updates
     - Create update verification with checksums
     - Write integration tests for update process
     - _Requirements: 7.4, 7.5_
 
-  - [ ] 8.3 Integrate update commands into CLI
+  - [x] 8.3 Integrate update commands into CLI
     - Add update subcommand with check and install options
     - Implement background update checking
     - Add configuration options for update behavior
     - Write tests for update CLI integration
     - _Requirements: 7.1, 7.2_
 
-- [ ] 9. Add built-in context plugins
-  - [ ] 9.1 Create environment variable plugin
+- [x] 9. Add built-in context plugins
+  - [x] 9.1 Create environment variable plugin
     - Implement plugin to collect relevant environment variables
     - Add filtering for sensitive information
     - Create plugin registration and integration
     - Write tests for environment context gathering
     - _Requirements: 10.5_
 
-  - [ ] 9.2 Implement development tool detection plugin
+  - [x] 9.2 Implement development tool detection plugin
     - Create plugin to detect Docker, Node.js, Python, and other dev tools
     - Add version detection and availability checking
     - Implement tool-specific context gathering
     - Write tests for various development environments
     - _Requirements: 10.5_
 
-  - [ ] 9.3 Add project type identification plugin
+  - [x] 9.3 Add project type identification plugin
     - Implement plugin to identify project types (web, mobile, data science, etc.)
     - Add language-specific context gathering
     - Create project structure analysis
