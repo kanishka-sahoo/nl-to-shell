@@ -600,7 +600,7 @@ func TestLogAndReturnWithContext(t *testing.T) {
 	SetGlobalLogger(logger)
 	defer SetGlobalLogger(originalLogger)
 
-	ctx := context.WithValue(context.Background(), "user_id", "test-user")
+	ctx := context.WithValue(context.Background(), contextKey("user_id"), "test-user")
 	testErr := &types.NLShellError{
 		Type:      types.ErrTypeValidation,
 		Severity:  types.SeverityError,

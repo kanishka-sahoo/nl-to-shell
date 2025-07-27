@@ -163,7 +163,7 @@ func (p *DevToolsPlugin) detectTool(name, command, versionFlag, versionPattern s
 }
 
 // detectRuntimes detects runtime environments
-func (p *DevToolsPlugin) detectRuntimes(ctx context.Context) map[string]interface{} {
+func (p *DevToolsPlugin) detectRuntimes(_ context.Context) map[string]interface{} {
 	runtimes := make(map[string]interface{})
 
 	// Node.js runtime detection
@@ -341,7 +341,7 @@ func (p *DevToolsPlugin) detectGoRuntime() map[string]interface{} {
 }
 
 // detectContainers detects container-related tools and environments
-func (p *DevToolsPlugin) detectContainers(ctx context.Context) map[string]interface{} {
+func (p *DevToolsPlugin) detectContainers(_ context.Context) map[string]interface{} {
 	containers := make(map[string]interface{})
 
 	// Check for Docker
@@ -385,7 +385,7 @@ func (p *DevToolsPlugin) detectContainers(ctx context.Context) map[string]interf
 }
 
 // detectDatabases detects database-related tools and configurations
-func (p *DevToolsPlugin) detectDatabases(ctx context.Context) map[string]interface{} {
+func (p *DevToolsPlugin) detectDatabases(_ context.Context) map[string]interface{} {
 	databases := make(map[string]interface{})
 
 	// Check for database configuration files

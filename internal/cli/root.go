@@ -418,7 +418,7 @@ func createLLMProvider(cfg *types.Config) (interfaces.LLMProvider, error) {
 }
 
 // displayResults displays the command generation and execution results
-func displayResults(result *types.FullResult, originalInput string) error {
+func displayResults(result *types.FullResult, _ string) error {
 	// Display generated command
 	fmt.Printf("Generated command: %s\n", result.CommandResult.Command.Generated)
 

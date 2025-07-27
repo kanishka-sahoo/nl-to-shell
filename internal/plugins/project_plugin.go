@@ -1178,7 +1178,7 @@ func (p *ProjectPlugin) gatherJavaContext() map[string]interface{} {
 }
 
 // analyzeProjectStructure analyzes the overall project structure
-func (p *ProjectPlugin) analyzeProjectStructure(ctx context.Context) map[string]interface{} {
+func (p *ProjectPlugin) analyzeProjectStructure(_ context.Context) map[string]interface{} {
 	structure := make(map[string]interface{})
 
 	// Count different types of files

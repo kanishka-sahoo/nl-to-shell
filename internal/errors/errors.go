@@ -12,6 +12,9 @@ import (
 	"github.com/nl-to-shell/nl-to-shell/internal/types"
 )
 
+// contextKey is a custom type for context keys to avoid collisions
+type contextKey string
+
 // Logger defines the interface for structured error logging
 type Logger interface {
 	LogError(err *types.NLShellError)
@@ -147,13 +150,22 @@ func (l *StructuredLogger) logJSON(ctx context.Context, err *types.NLShellError,
 
 	// Add context values if available
 	if ctx != nil {
+		// Try both string keys and custom contextKey type for compatibility
 		if userID := ctx.Value("user_id"); userID != nil {
 			logEntry["context_user_id"] = userID
+		} else if userID := ctx.Value(contextKey("user_id")); userID != nil {
+			logEntry["context_user_id"] = userID
 		}
+
 		if sessionID := ctx.Value("session_id"); sessionID != nil {
 			logEntry["context_session_id"] = sessionID
+		} else if sessionID := ctx.Value(contextKey("session_id")); sessionID != nil {
+			logEntry["context_session_id"] = sessionID
 		}
+
 		if requestID := ctx.Value("request_id"); requestID != nil {
+			logEntry["context_request_id"] = requestID
+		} else if requestID := ctx.Value(contextKey("request_id")); requestID != nil {
 			logEntry["context_request_id"] = requestID
 		}
 	}
@@ -170,7 +182,7 @@ func (l *StructuredLogger) logJSON(ctx context.Context, err *types.NLShellError,
 }
 
 // logText logs the error in human-readable text format
-func (l *StructuredLogger) logText(ctx context.Context, err *types.NLShellError, level LogLevel) {
+func (l *StructuredLogger) logText(_ context.Context, err *types.NLShellError, level LogLevel) {
 	timestamp := err.Timestamp.Format(time.RFC3339)
 
 	logMsg := fmt.Sprintf("[%s] %s %s", timestamp, level.String(), err.Error())
@@ -189,7 +201,7 @@ func (l *StructuredLogger) logText(ctx context.Context, err *types.NLShellError,
 	}
 
 	// Add context information
-	if err.Context != nil && len(err.Context) > 0 {
+	if len(err.Context) > 0 {
 		contextStr, _ := json.Marshal(err.Context)
 		logMsg += fmt.Sprintf(" context=%s", string(contextStr))
 	}

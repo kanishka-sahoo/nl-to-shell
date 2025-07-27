@@ -166,19 +166,22 @@ func (m *Manager) findAssetForPlatform(assets []struct {
 	var pattern string
 	switch runtime.GOOS {
 	case "linux":
-		if runtime.GOARCH == "amd64" {
+		switch runtime.GOARCH {
+		case "amd64":
 			pattern = "linux-amd64"
-		} else if runtime.GOARCH == "arm64" {
+		case "arm64":
 			pattern = "linux-arm64"
 		}
 	case "darwin":
-		if runtime.GOARCH == "amd64" {
+		switch runtime.GOARCH {
+		case "amd64":
 			pattern = "darwin-amd64"
-		} else if runtime.GOARCH == "arm64" {
+		case "arm64":
 			pattern = "darwin-arm64"
 		}
 	case "windows":
-		if runtime.GOARCH == "amd64" {
+		switch runtime.GOARCH {
+		case "amd64":
 			pattern = "windows-amd64"
 		}
 	}
