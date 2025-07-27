@@ -274,6 +274,23 @@ type CLIConfig struct {
 	ValidateResults  bool
 }
 
+// ExecutionOptions controls how commands are executed
+type ExecutionOptions struct {
+	DryRun           bool
+	SkipConfirmation bool
+	ValidateResults  bool
+	Timeout          time.Duration
+}
+
+// FullResult represents the complete result of command generation and execution
+type FullResult struct {
+	CommandResult        *CommandResult
+	ExecutionResult      *ExecutionResult
+	ValidationResult     *ValidationResult
+	DryRunResult         *DryRunResult
+	RequiresConfirmation bool
+}
+
 // ErrorType represents different types of errors
 type ErrorType int
 
