@@ -113,7 +113,7 @@ func (e *Executor) Execute(ctx context.Context, cmd *types.Command) (*types.Exec
 	}
 
 	// Execute the command
-	stdout, stderr, exitCode, err := e.runCommand(execCmd)
+	stdout, stderr, exitCode, err := e.runCommand(execCmd, execCtx)
 	duration := time.Since(startTime)
 
 	result := &types.ExecutionResult{
@@ -234,7 +234,7 @@ func (e *Executor) parseCommand(cmdStr string) ([]string, error) {
 }
 
 // runCommand executes the command and captures output
-func (e *Executor) runCommand(cmd *exec.Cmd) (stdout, stderr string, exitCode int, err error) {
+func (e *Executor) runCommand(cmd *exec.Cmd, ctx context.Context) (stdout, stderr string, exitCode int, err error) {
 	// Capture stdout and stderr
 	stdoutPipe, err := cmd.StdoutPipe()
 	if err != nil {
@@ -307,6 +307,15 @@ func (e *Executor) runCommand(cmd *exec.Cmd) (stdout, stderr string, exitCode in
 	// Determine exit code
 	exitCode = 0
 	if err != nil {
+		// Check if the context was cancelled first
+		if ctx != nil && ctx.Err() != nil {
+			return stdout, stderr, -1, &types.NLShellError{
+				Type:    types.ErrTypeTimeout,
+				Message: "command execution timed out",
+				Cause:   ctx.Err(),
+			}
+		}
+
 		if exitError, ok := err.(*exec.ExitError); ok {
 			if status, ok := exitError.Sys().(syscall.WaitStatus); ok {
 				exitCode = status.ExitStatus()

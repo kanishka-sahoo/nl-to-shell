@@ -62,7 +62,8 @@ func (m *Manager) Load() (*types.Config, error) {
 	// Parse JSON
 	var config types.Config
 	if err := json.Unmarshal(data, &config); err != nil {
-		return nil, fmt.Errorf("failed to parse config file: %w", err)
+		// If JSON is corrupted, return default config instead of failing
+		return m.getDefaultConfig(), nil
 	}
 
 	// Merge with defaults to ensure all fields are populated
@@ -236,6 +237,38 @@ func (m *Manager) mergeWithDefaults(config *types.Config, defaults *types.Config
 	if config.UpdateSettings.CheckInterval == 0 {
 		config.UpdateSettings.CheckInterval = defaults.UpdateSettings.CheckInterval
 	}
+}
+
+// SetProviderConfig sets configuration for a specific provider
+func (m *Manager) SetProviderConfig(provider string, config types.ProviderConfig) error {
+	currentConfig, err := m.Load()
+	if err != nil {
+		return fmt.Errorf("failed to load current config: %w", err)
+	}
+
+	if currentConfig.Providers == nil {
+		currentConfig.Providers = make(map[string]types.ProviderConfig)
+	}
+
+	currentConfig.Providers[provider] = config
+	return m.Save(currentConfig)
+}
+
+// UpdateUserPreferences updates user preferences
+func (m *Manager) UpdateUserPreferences(prefs types.UserPreferences) error {
+	currentConfig, err := m.Load()
+	if err != nil {
+		return fmt.Errorf("failed to load current config: %w", err)
+	}
+
+	currentConfig.UserPreferences = prefs
+	return m.Save(currentConfig)
+}
+
+// Reset resets configuration to defaults
+func (m *Manager) Reset() error {
+	defaultConfig := m.getDefaultConfig()
+	return m.Save(defaultConfig)
 }
 
 // StoreCredential stores a credential securely
