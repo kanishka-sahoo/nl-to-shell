@@ -1,0 +1,13 @@
+#!/bin/bash
+set -e
+
+# Make binary executable
+chmod +x /usr/local/bin/nl-to-shell
+
+# Update PATH if needed
+if ! echo "$PATH" | grep -q "/usr/local/bin"; then
+    echo "Note: /usr/local/bin should be in your PATH to use nl-to-shell"
+fi
+
+echo "nl-to-shell installed successfully!"
+echo "Run 'nl-to-shell --help' to get started."

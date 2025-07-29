@@ -1,0 +1,14 @@
+Package: nl-to-shell
+Version: 0.1.0-dev
+Section: utils
+Priority: optional
+Architecture: amd64
+Depends: git
+Maintainer: nl-to-shell Team <maintainers@nl-to-shell.com>
+Description: Convert natural language to shell commands using LLMs
+ nl-to-shell is a CLI utility that converts natural language descriptions
+ into executable shell commands using Large Language Models (LLMs).
+ .
+ It provides context-aware command generation by analyzing your current working
+ directory, git repository state, files, and other environmental factors.
+Homepage: https://github.com/nl-to-shell/nl-to-shell

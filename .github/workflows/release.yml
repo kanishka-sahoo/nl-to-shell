@@ -1,0 +1,325 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+env:
+  GO_VERSION: '1.23'
+
+jobs:
+  create-release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    outputs:
+      upload_url: ${{ steps.create_release.outputs.upload_url }}
+      version: ${{ steps.get_version.outputs.version }}
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Get version from tag
+      id: get_version
+      run: |
+        VERSION=${GITHUB_REF#refs/tags/}
+        echo "version=${VERSION}" >> $GITHUB_OUTPUT
+        echo "Version: ${VERSION}"
+
+    - name: Generate changelog
+      id: changelog
+      run: |
+        # Generate changelog from git commits since last tag
+        PREVIOUS_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+        if [ -n "$PREVIOUS_TAG" ]; then
+          CHANGELOG=$(git log --pretty=format:"- %s" ${PREVIOUS_TAG}..HEAD)
+        else
+          CHANGELOG=$(git log --pretty=format:"- %s")
+        fi
+        
+        # Save changelog to file for multiline output
+        echo "$CHANGELOG" > changelog.txt
+        
+        # Also create a formatted changelog
+        echo "## Changes" > formatted_changelog.md
+        echo "" >> formatted_changelog.md
+        echo "$CHANGELOG" >> formatted_changelog.md
+
+    - name: Create Release
+      id: create_release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ github.ref }}
+        release_name: Release ${{ steps.get_version.outputs.version }}
+        body_path: formatted_changelog.md
+        draft: false
+        prerelease: ${{ contains(steps.get_version.outputs.version, '-') }}
+
+  build-and-upload:
+    name: Build and Upload Assets
+    runs-on: ubuntu-latest
+    needs: create-release
+    strategy:
+      matrix:
+        include:
+          - goos: linux
+            goarch: amd64
+          - goos: linux
+            goarch: arm64
+          - goos: darwin
+            goarch: amd64
+          - goos: darwin
+            goarch: arm64
+          - goos: windows
+            goarch: amd64
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: ${{ env.GO_VERSION }}
+
+    - name: Cache Go modules
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cache/go-build
+          ~/go/pkg/mod
+        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-go-
+
+    - name: Set build variables
+      run: |
+        echo "VERSION=${{ needs.create-release.outputs.version }}" >> $GITHUB_ENV
+        echo "GIT_COMMIT=${GITHUB_SHA::8}" >> $GITHUB_ENV
+        echo "BUILD_DATE=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> $GITHUB_ENV
+
+    - name: Build binary
+      env:
+        GOOS: ${{ matrix.goos }}
+        GOARCH: ${{ matrix.goarch }}
+        CGO_ENABLED: 0
+      run: |
+        BINARY_NAME="nl-to-shell-${{ matrix.goos }}-${{ matrix.goarch }}"
+        if [ "${{ matrix.goos }}" = "windows" ]; then
+          BINARY_NAME="${BINARY_NAME}.exe"
+        fi
+        
+        LDFLAGS="-w -s -X 'github.com/nl-to-shell/nl-to-shell/internal/cli.Version=${VERSION}' -X 'github.com/nl-to-shell/nl-to-shell/internal/cli.GitCommit=${GIT_COMMIT}' -X 'github.com/nl-to-shell/nl-to-shell/internal/cli.BuildDate=${BUILD_DATE}'"
+        
+        mkdir -p bin
+        go build -ldflags="$LDFLAGS" -o "bin/${BINARY_NAME}" ./cmd/nl-to-shell
+        
+        # Generate checksum
+        cd bin
+        sha256sum "${BINARY_NAME}" > "${BINARY_NAME}.sha256"
+        
+        # Create archive
+        if [ "${{ matrix.goos }}" = "windows" ]; then
+          zip "../${BINARY_NAME}.zip" "${BINARY_NAME}" "${BINARY_NAME}.sha256"
+        else
+          tar -czf "../${BINARY_NAME}.tar.gz" "${BINARY_NAME}" "${BINARY_NAME}.sha256"
+        fi
+        cd ..
+
+    - name: Verify binary
+      run: |
+        chmod +x scripts/verify-binaries.sh
+        ./scripts/verify-binaries.sh verify
+
+    - name: Upload Release Asset (Binary)
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ needs.create-release.outputs.upload_url }}
+        asset_path: ./bin/nl-to-shell-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.goos == 'windows' && '.exe' || '' }}
+        asset_name: nl-to-shell-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.goos == 'windows' && '.exe' || '' }}
+        asset_content_type: application/octet-stream
+
+    - name: Upload Release Asset (Checksum)
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ needs.create-release.outputs.upload_url }}
+        asset_path: ./bin/nl-to-shell-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.goos == 'windows' && '.exe' || '' }}.sha256
+        asset_name: nl-to-shell-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.goos == 'windows' && '.exe' || '' }}.sha256
+        asset_content_type: text/plain
+
+    - name: Upload Release Asset (Archive)
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ needs.create-release.outputs.upload_url }}
+        asset_path: ./nl-to-shell-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.goos == 'windows' && '.zip' || '.tar.gz' }}
+        asset_name: nl-to-shell-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.goos == 'windows' && '.zip' || '.tar.gz' }}
+        asset_content_type: ${{ matrix.goos == 'windows' && 'application/zip' || 'application/gzip' }}
+
+  build-docker:
+    name: Build and Push Docker Image
+    runs-on: ubuntu-latest
+    needs: create-release
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Log in to Docker Hub
+      if: github.event_name != 'pull_request'
+      uses: docker/login-action@v3
+      with:
+        username: ${{ secrets.DOCKER_USERNAME }}
+        password: ${{ secrets.DOCKER_PASSWORD }}
+
+    - name: Log in to GitHub Container Registry
+      if: github.event_name != 'pull_request'
+      uses: docker/login-action@v3
+      with:
+        registry: ghcr.io
+        username: ${{ github.repository_owner }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Extract metadata
+      id: meta
+      uses: docker/metadata-action@v5
+      with:
+        images: |
+          nl-to-shell/nl-to-shell
+          ghcr.io/${{ github.repository }}
+        tags: |
+          type=ref,event=branch
+          type=ref,event=pr
+          type=semver,pattern={{version}}
+          type=semver,pattern={{major}}.{{minor}}
+          type=semver,pattern={{major}}
+
+    - name: Build and push Docker image
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        platforms: linux/amd64,linux/arm64
+        push: ${{ github.event_name != 'pull_request' }}
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+        build-args: |
+          VERSION=${{ needs.create-release.outputs.version }}
+          GIT_COMMIT=${{ github.sha }}
+          BUILD_DATE=${{ github.event.head_commit.timestamp }}
+
+  generate-packages:
+    name: Generate Package Configurations
+    runs-on: ubuntu-latest
+    needs: [create-release, build-and-upload]
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Generate package configurations
+      env:
+        VERSION: ${{ needs.create-release.outputs.version }}
+      run: |
+        ./scripts/generate-packages.sh all
+
+    - name: Upload package configurations
+      uses: actions/upload-artifact@v4
+      with:
+        name: package-configurations
+        path: |
+          packaging/
+        retention-days: 30
+
+  update-homebrew:
+    name: Update Homebrew Formula
+    runs-on: ubuntu-latest
+    needs: [create-release, build-and-upload, generate-packages]
+    if: ${{ !contains(needs.create-release.outputs.version, '-') }}
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Download package configurations
+      uses: actions/download-artifact@v4
+      with:
+        name: package-configurations
+        path: packaging/
+
+    - name: Update Homebrew formula
+      uses: mislav/bump-homebrew-formula-action@v3
+      with:
+        formula-name: nl-to-shell
+        homebrew-tap: nl-to-shell/homebrew-tap
+        base-branch: main
+        download-url: https://github.com/${{ github.repository }}/releases/download/${{ needs.create-release.outputs.version }}/nl-to-shell-darwin-amd64.tar.gz
+        commit-message: |
+          Update nl-to-shell to ${{ needs.create-release.outputs.version }}
+          
+          Created by GitHub Actions
+      env:
+        COMMITTER_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+
+  upload-installers:
+    name: Upload Installation Scripts
+    runs-on: ubuntu-latest
+    needs: create-release
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Upload Unix installer script
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ needs.create-release.outputs.upload_url }}
+        asset_path: ./scripts/install.sh
+        asset_name: install.sh
+        asset_content_type: text/plain
+
+    - name: Upload Windows installer script
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ needs.create-release.outputs.upload_url }}
+        asset_path: ./scripts/install.ps1
+        asset_name: install.ps1
+        asset_content_type: text/plain
+
+  notify-release:
+    name: Notify Release
+    runs-on: ubuntu-latest
+    needs: [create-release, build-and-upload, build-docker, upload-installers]
+    if: always()
+    steps:
+    - name: Notify success
+      if: ${{ needs.build-and-upload.result == 'success' && needs.build-docker.result == 'success' }}
+      run: |
+        echo "✅ Release ${{ needs.create-release.outputs.version }} completed successfully!"
+        echo "🔗 Release URL: https://github.com/${{ github.repository }}/releases/tag/${{ needs.create-release.outputs.version }}"
+        echo ""
+        echo "Installation methods:"
+        echo "🐧 Linux/macOS: curl -sSL https://github.com/${{ github.repository }}/releases/download/${{ needs.create-release.outputs.version }}/install.sh | bash"
+        echo "🪟 Windows: iwr https://github.com/${{ github.repository }}/releases/download/${{ needs.create-release.outputs.version }}/install.ps1 | iex"
+        echo "🍺 Homebrew: brew install nl-to-shell/tap/nl-to-shell"
+        echo "🐳 Docker: docker run --rm -it ghcr.io/${{ github.repository }}:${{ needs.create-release.outputs.version }}"
+
+    - name: Notify failure
+      if: ${{ needs.build-and-upload.result == 'failure' || needs.build-docker.result == 'failure' }}
+      run: |
+        echo "❌ Release ${{ needs.create-release.outputs.version }} failed!"
+        exit 1
