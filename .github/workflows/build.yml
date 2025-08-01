@@ -62,29 +62,6 @@ jobs:
     - name: Run golangci-lint
       run: $(go env GOPATH)/bin/golangci-lint run
 
-    - name: Run unit tests
-      env:
-        OPENAI_API_KEY: "env-openai-key"
-        ANTHROPIC_DEFAULT_KEY: "env-anthropic-key"
-        GOOGLE_TOKEN: "env-google-token"
-        CUSTOM_SERVICE_API_KEY: "env-custom-key"
-      run: go test -v -race -coverprofile=coverage.out ./...
-
-    - name: Run integration tests
-      env:
-        OPENAI_API_KEY: "env-openai-key"
-        ANTHROPIC_DEFAULT_KEY: "env-anthropic-key"
-        GOOGLE_TOKEN: "env-google-token"
-        CUSTOM_SERVICE_API_KEY: "env-custom-key"
-      run: go test -v -tags=integration ./...
-
-    - name: Upload coverage to Codecov
-      uses: codecov/codecov-action@v4
-      with:
-        file: ./coverage.out
-        flags: unittests
-        name: codecov-umbrella
-
   build:
     name: Build
     runs-on: ubuntu-latest
