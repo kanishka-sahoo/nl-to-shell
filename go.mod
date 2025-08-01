@@ -1,4 +1,4 @@
-module github.com/nl-to-shell/nl-to-shell
+module github.com/kanishka-sahoo/nl-to-shell
 
 go 1.23.0
 

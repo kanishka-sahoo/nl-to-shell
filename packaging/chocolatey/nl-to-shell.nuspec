@@ -3,18 +3,18 @@
   <metadata>
     <id>nl-to-shell</id>
     <version>0.1.0-dev</version>
-    <packageSourceUrl>https://github.com/nl-to-shell/nl-to-shell</packageSourceUrl>
+    <packageSourceUrl>https://github.com/kanishka-sahoo/nl-to-shell</packageSourceUrl>
     <owners>nl-to-shell</owners>
     <title>nl-to-shell</title>
     <authors>nl-to-shell Team</authors>
-    <projectUrl>https://github.com/nl-to-shell/nl-to-shell</projectUrl>
-    <iconUrl>https://github.com/nl-to-shell/nl-to-shell/raw/main/assets/icon.png</iconUrl>
+    <projectUrl>https://github.com/kanishka-sahoo/nl-to-shell</projectUrl>
+    <iconUrl>https://github.com/kanishka-sahoo/nl-to-shell/raw/main/assets/icon.png</iconUrl>
     <copyright>2025 nl-to-shell Team</copyright>
-    <licenseUrl>https://github.com/nl-to-shell/nl-to-shell/blob/main/LICENSE</licenseUrl>
+    <licenseUrl>https://github.com/kanishka-sahoo/nl-to-shell/blob/main/LICENSE</licenseUrl>
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
-    <projectSourceUrl>https://github.com/nl-to-shell/nl-to-shell</projectSourceUrl>
-    <docsUrl>https://github.com/nl-to-shell/nl-to-shell/blob/main/README.md</docsUrl>
-    <bugTrackerUrl>https://github.com/nl-to-shell/nl-to-shell/issues</bugTrackerUrl>
+    <projectSourceUrl>https://github.com/kanishka-sahoo/nl-to-shell</projectSourceUrl>
+    <docsUrl>https://github.com/kanishka-sahoo/nl-to-shell/blob/main/README.md</docsUrl>
+    <bugTrackerUrl>https://github.com/kanishka-sahoo/nl-to-shell/issues</bugTrackerUrl>
     <tags>cli shell command natural-language llm ai</tags>
     <summary>Convert natural language to shell commands using LLMs</summary>
     <description>
@@ -37,7 +37,7 @@ nl-to-shell --dry-run "delete all .tmp files"
 nl-to-shell --provider openai "find large files"
 ```
     </description>
-    <releaseNotes>https://github.com/nl-to-shell/nl-to-shell/releases/tag/0.1.0-dev</releaseNotes>
+    <releaseNotes>https://github.com/kanishka-sahoo/nl-to-shell/releases/tag/0.1.0-dev</releaseNotes>
   </metadata>
   <files>
     <file src="tools\**" target="tools" />

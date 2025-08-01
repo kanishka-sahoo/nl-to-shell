@@ -7,8 +7,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/nl-to-shell/nl-to-shell/internal/interfaces"
-	"github.com/nl-to-shell/nl-to-shell/internal/types"
+	"github.com/kanishka-sahoo/nl-to-shell/internal/interfaces"
+	"github.com/kanishka-sahoo/nl-to-shell/internal/types"
 )
 
 // ProjectPlugin identifies project types and gathers language-specific context

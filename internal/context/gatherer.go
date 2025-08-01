@@ -7,9 +7,9 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/nl-to-shell/nl-to-shell/internal/cache"
-	"github.com/nl-to-shell/nl-to-shell/internal/interfaces"
-	"github.com/nl-to-shell/nl-to-shell/internal/types"
+	"github.com/kanishka-sahoo/nl-to-shell/internal/cache"
+	"github.com/kanishka-sahoo/nl-to-shell/internal/interfaces"
+	"github.com/kanishka-sahoo/nl-to-shell/internal/types"
 )
 
 const (

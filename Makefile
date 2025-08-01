@@ -18,9 +18,9 @@ GOMOD=$(GOCMD) mod
 
 # Build flags for static linking and version embedding
 LDFLAGS=-w -s \
-	-X 'github.com/nl-to-shell/nl-to-shell/internal/cli.Version=$(VERSION)' \
-	-X 'github.com/nl-to-shell/nl-to-shell/internal/cli.GitCommit=$(GIT_COMMIT)' \
-	-X 'github.com/nl-to-shell/nl-to-shell/internal/cli.BuildDate=$(BUILD_DATE)'
+	-X 'github.com/kanishka-sahoo/nl-to-shell/internal/cli.Version=$(VERSION)' \
+	-X 'github.com/kanishka-sahoo/nl-to-shell/internal/cli.GitCommit=$(GIT_COMMIT)' \
+	-X 'github.com/kanishka-sahoo/nl-to-shell/internal/cli.BuildDate=$(BUILD_DATE)'
 
 # CGO settings for static builds
 export CGO_ENABLED=0

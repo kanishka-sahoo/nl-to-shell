@@ -114,7 +114,7 @@ jobs:
           BINARY_NAME="${BINARY_NAME}.exe"
         fi
         
-        LDFLAGS="-w -s -X 'github.com/nl-to-shell/nl-to-shell/internal/cli.Version=${VERSION}' -X 'github.com/nl-to-shell/nl-to-shell/internal/cli.GitCommit=${GIT_COMMIT}' -X 'github.com/nl-to-shell/nl-to-shell/internal/cli.BuildDate=${BUILD_DATE}'"
+        LDFLAGS="-w -s -X 'github.com/kanishka-sahoo/nl-to-shell/internal/cli.Version=${VERSION}' -X 'github.com/kanishka-sahoo/nl-to-shell/internal/cli.GitCommit=${GIT_COMMIT}' -X 'github.com/kanishka-sahoo/nl-to-shell/internal/cli.BuildDate=${BUILD_DATE}'"
         
         mkdir -p bin
         go build -ldflags="$LDFLAGS" -o "bin/${BINARY_NAME}" ./cmd/nl-to-shell
@@ -197,7 +197,7 @@ jobs:
       uses: docker/metadata-action@v5
       with:
         images: |
-          nl-to-shell/nl-to-shell
+          kanishka-sahoo/nl-to-shell
           ghcr.io/${{ github.repository }}
         tags: |
           type=ref,event=branch

@@ -9,10 +9,10 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/nl-to-shell/nl-to-shell/internal/cli"
-	"github.com/nl-to-shell/nl-to-shell/internal/errors"
-	"github.com/nl-to-shell/nl-to-shell/internal/performance"
-	"github.com/nl-to-shell/nl-to-shell/internal/types"
+	"github.com/kanishka-sahoo/nl-to-shell/internal/cli"
+	"github.com/kanishka-sahoo/nl-to-shell/internal/errors"
+	"github.com/kanishka-sahoo/nl-to-shell/internal/performance"
+	"github.com/kanishka-sahoo/nl-to-shell/internal/types"
 )
 
 // Version information - will be set during build

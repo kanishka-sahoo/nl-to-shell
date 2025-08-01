@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/nl-to-shell/nl-to-shell/internal/types"
+	"github.com/kanishka-sahoo/nl-to-shell/internal/types"
 )
 
 func TestDefaultRetryPolicy(t *testing.T) {

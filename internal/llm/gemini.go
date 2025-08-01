@@ -9,7 +9,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/nl-to-shell/nl-to-shell/internal/types"
+	"github.com/kanishka-sahoo/nl-to-shell/internal/types"
 )
 
 // GeminiRequest represents the request structure for Gemini API

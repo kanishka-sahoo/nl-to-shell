@@ -1,7 +1,7 @@
 package plugins
 
 import (
-	"github.com/nl-to-shell/nl-to-shell/internal/interfaces"
+	"github.com/kanishka-sahoo/nl-to-shell/internal/interfaces"
 )
 
 // RegisterBuiltinPlugins registers all built-in context plugins with the plugin manager

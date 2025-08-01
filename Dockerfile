@@ -23,7 +23,7 @@ ARG BUILD_DATE=unknown
 
 # Build the binary with static linking
 RUN CGO_ENABLED=0 GOOS=linux go build \
-    -ldflags="-w -s -X 'github.com/nl-to-shell/nl-to-shell/internal/cli.Version=${VERSION}' -X 'github.com/nl-to-shell/nl-to-shell/internal/cli.GitCommit=${GIT_COMMIT}' -X 'github.com/nl-to-shell/nl-to-shell/internal/cli.BuildDate=${BUILD_DATE}'" \
+    -ldflags="-w -s -X 'github.com/kanishka-sahoo/nl-to-shell/internal/cli.Version=${VERSION}' -X 'github.com/kanishka-sahoo/nl-to-shell/internal/cli.GitCommit=${GIT_COMMIT}' -X 'github.com/kanishka-sahoo/nl-to-shell/internal/cli.BuildDate=${BUILD_DATE}'" \
     -o nl-to-shell \
     ./cmd/nl-to-shell
 
@@ -48,5 +48,5 @@ CMD ["--help"]
 # Metadata
 LABEL org.opencontainers.image.title="nl-to-shell"
 LABEL org.opencontainers.image.description="Convert natural language to shell commands using LLMs"
-LABEL org.opencontainers.image.source="https://github.com/nl-to-shell/nl-to-shell"
+LABEL org.opencontainers.image.source="https://github.com/kanishka-sahoo/nl-to-shell"
 LABEL org.opencontainers.image.licenses="MIT"

@@ -40,7 +40,7 @@ linters-settings:
     line-length: 120
   
   goimports:
-    local-prefixes: github.com/nl-to-shell/nl-to-shell
+    local-prefixes: github.com/kanishka-sahoo/nl-to-shell
   
   gocritic:
     enabled-tags:

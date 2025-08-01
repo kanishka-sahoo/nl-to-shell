@@ -4,7 +4,7 @@ Release:        1%{?dist}
 Summary:        Convert natural language to shell commands using LLMs
 
 License:        MIT
-URL:            https://github.com/nl-to-shell/nl-to-shell
+URL:            https://github.com/kanishka-sahoo/nl-to-shell
 Source0:        %{name}-%{version}.tar.gz
 
 BuildRequires:  git

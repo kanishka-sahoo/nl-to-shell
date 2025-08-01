@@ -203,7 +203,7 @@ $(
   ],
   "predicate": {
     "builder": {
-      "id": "https://github.com/nl-to-shell/nl-to-shell/.github/workflows/build.yml"
+      "id": "https://github.com/kanishka-sahoo/nl-to-shell/.github/workflows/build.yml"
     },
     "buildType": "https://github.com/Attestations/GitHubActionsWorkflow@v1",
     "invocation": {

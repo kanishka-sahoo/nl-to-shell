@@ -3,7 +3,7 @@ package interfaces
 import (
 	"context"
 
-	"github.com/nl-to-shell/nl-to-shell/internal/types"
+	"github.com/kanishka-sahoo/nl-to-shell/internal/types"
 )
 
 // LLMProvider defines the interface for Large Language Model providers

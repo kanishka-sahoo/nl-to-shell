@@ -1,9 +1,9 @@
 # nl-to-shell
 
-[![Go Version](https://img.shields.io/github/go-mod/go-version/nl-to-shell/nl-to-shell)](https://golang.org/)
-[![License](https://img.shields.io/github/license/nl-to-shell/nl-to-shell)](LICENSE)
-[![Release](https://img.shields.io/github/v/release/nl-to-shell/nl-to-shell)](https://github.com/nl-to-shell/nl-to-shell/releases)
-[![Tests](https://img.shields.io/github/workflow/status/nl-to-shell/nl-to-shell/Tests)](https://github.com/nl-to-shell/nl-to-shell/actions)
+[![Go Version](https://img.shields.io/github/go-mod/go-version/kanishka-sahoo/nl-to-shell)](https://golang.org/)
+[![License](https://img.shields.io/github/license/kanishka-sahoo/nl-to-shell)](LICENSE)
+[![Release](https://img.shields.io/github/v/release/kanishka-sahoo/nl-to-shell)](https://github.com/kanishka-sahoo/nl-to-shell/releases)
+[![Tests](https://img.shields.io/github/workflow/status/kanishka-sahoo/nl-to-shell/Tests)](https://github.com/kanishka-sahoo/nl-to-shell/actions)
 
 A powerful command-line utility that converts natural language descriptions into executable shell commands using Large Language Models (LLMs). Built with safety, context-awareness, and extensibility in mind.
 
@@ -57,12 +57,12 @@ choco install nl-to-shell
 
 ### Direct Download
 
-Download the latest release for your platform from [GitHub Releases](https://github.com/nl-to-shell/nl-to-shell/releases).
+Download the latest release for your platform from [GitHub Releases](https://github.com/kanishka-sahoo/nl-to-shell/releases).
 
 ### From Source
 
 ```bash
-git clone https://github.com/nl-to-shell/nl-to-shell.git
+git clone https://github.com/kanishka-sahoo/nl-to-shell.git
 cd nl-to-shell
 make build
 sudo make install
@@ -71,7 +71,7 @@ sudo make install
 ### Using Go Install
 
 ```bash
-go install github.com/nl-to-shell/nl-to-shell/cmd/nl-to-shell@latest
+go install github.com/kanishka-sahoo/nl-to-shell/cmd/nl-to-shell@latest
 ```
 
 ## 🚀 Quick Start

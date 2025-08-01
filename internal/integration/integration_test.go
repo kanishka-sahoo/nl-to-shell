@@ -8,13 +8,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/nl-to-shell/nl-to-shell/internal/config"
-	contextpkg "github.com/nl-to-shell/nl-to-shell/internal/context"
-	"github.com/nl-to-shell/nl-to-shell/internal/executor"
-	"github.com/nl-to-shell/nl-to-shell/internal/manager"
-	"github.com/nl-to-shell/nl-to-shell/internal/safety"
-	mocks "github.com/nl-to-shell/nl-to-shell/internal/testing"
-	"github.com/nl-to-shell/nl-to-shell/internal/types"
+	"github.com/kanishka-sahoo/nl-to-shell/internal/config"
+	contextpkg "github.com/kanishka-sahoo/nl-to-shell/internal/context"
+	"github.com/kanishka-sahoo/nl-to-shell/internal/executor"
+	"github.com/kanishka-sahoo/nl-to-shell/internal/manager"
+	"github.com/kanishka-sahoo/nl-to-shell/internal/safety"
+	mocks "github.com/kanishka-sahoo/nl-to-shell/internal/testing"
+	"github.com/kanishka-sahoo/nl-to-shell/internal/types"
 )
 
 func TestFullPipelineIntegration(t *testing.T) {

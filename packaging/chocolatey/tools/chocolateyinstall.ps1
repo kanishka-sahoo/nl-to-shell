@@ -2,7 +2,7 @@ $ErrorActionPreference = 'Stop'
 
 $packageName = 'nl-to-shell'
 $toolsDir = "$(Split-Path -parent $MyInvocation.MyCommand.Definition)"
-$url64 = 'https://github.com/nl-to-shell/nl-to-shell/releases/download/0.1.0-dev/nl-to-shell-windows-amd64.exe'
+$url64 = 'https://github.com/kanishka-sahoo/nl-to-shell/releases/download/0.1.0-dev/nl-to-shell-windows-amd64.exe'
 
 $packageArgs = @{
   packageName   = $packageName

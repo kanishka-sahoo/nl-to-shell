@@ -16,7 +16,7 @@ GIT_COMMIT=${GIT_COMMIT:-$(git rev-parse --short HEAD 2>/dev/null || echo "unkno
 BUILD_DATE=${BUILD_DATE:-$(date -u +"%Y-%m-%dT%H:%M:%SZ")}
 
 # Go build flags for static linking and optimization
-LDFLAGS="-w -s -X 'github.com/nl-to-shell/nl-to-shell/internal/cli.Version=${VERSION}' -X 'github.com/nl-to-shell/nl-to-shell/internal/cli.GitCommit=${GIT_COMMIT}' -X 'github.com/nl-to-shell/nl-to-shell/internal/cli.BuildDate=${BUILD_DATE}'"
+LDFLAGS="-w -s -X 'github.com/kanishka-sahoo/nl-to-shell/internal/cli.Version=${VERSION}' -X 'github.com/kanishka-sahoo/nl-to-shell/internal/cli.GitCommit=${GIT_COMMIT}' -X 'github.com/kanishka-sahoo/nl-to-shell/internal/cli.BuildDate=${BUILD_DATE}'"
 
 # CGO settings for static builds
 export CGO_ENABLED=0

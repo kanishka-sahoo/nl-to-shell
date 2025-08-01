@@ -7,13 +7,13 @@ This document provides various methods to install nl-to-shell on your system.
 ### Linux and macOS
 
 ```bash
-curl -sSL https://github.com/nl-to-shell/nl-to-shell/releases/latest/download/install.sh | bash
+curl -sSL https://github.com/kanishka-sahoo/nl-to-shell/releases/latest/download/install.sh | bash
 ```
 
 ### Windows (PowerShell)
 
 ```powershell
-iwr https://github.com/nl-to-shell/nl-to-shell/releases/latest/download/install.ps1 | iex
+iwr https://github.com/kanishka-sahoo/nl-to-shell/releases/latest/download/install.ps1 | iex
 ```
 
 ## Package Managers
@@ -38,7 +38,7 @@ choco install nl-to-shell
 
 ```bash
 # Download and install the .deb package
-wget https://github.com/nl-to-shell/nl-to-shell/releases/latest/download/nl-to-shell-linux-amd64.deb
+wget https://github.com/kanishka-sahoo/nl-to-shell/releases/latest/download/nl-to-shell-linux-amd64.deb
 sudo dpkg -i nl-to-shell-linux-amd64.deb
 ```
 
@@ -46,7 +46,7 @@ sudo dpkg -i nl-to-shell-linux-amd64.deb
 
 ```bash
 # Download and install the .rpm package
-wget https://github.com/nl-to-shell/nl-to-shell/releases/latest/download/nl-to-shell-linux-amd64.rpm
+wget https://github.com/kanishka-sahoo/nl-to-shell/releases/latest/download/nl-to-shell-linux-amd64.rpm
 sudo rpm -i nl-to-shell-linux-amd64.rpm
 ```
 
@@ -55,20 +55,20 @@ sudo rpm -i nl-to-shell-linux-amd64.rpm
 ### Run directly
 
 ```bash
-docker run --rm -it ghcr.io/nl-to-shell/nl-to-shell:latest "list files by size"
+docker run --rm -it ghcr.io/kanishka-sahoo/nl-to-shell:latest "list files by size"
 ```
 
 ### With volume mount for current directory
 
 ```bash
-docker run --rm -it -v "$(pwd):/workspace" -w /workspace ghcr.io/nl-to-shell/nl-to-shell:latest "list files by size"
+docker run --rm -it -v "$(pwd):/workspace" -w /workspace ghcr.io/kanishka-sahoo/nl-to-shell:latest "list files by size"
 ```
 
 ## Manual Installation
 
 ### Download Pre-built Binaries
 
-1. Go to the [releases page](https://github.com/nl-to-shell/nl-to-shell/releases)
+1. Go to the [releases page](https://github.com/kanishka-sahoo/nl-to-shell/releases)
 2. Download the appropriate binary for your platform:
    - `nl-to-shell-linux-amd64` - Linux x86_64
    - `nl-to-shell-linux-arm64` - Linux ARM64
@@ -103,7 +103,7 @@ Requirements:
 
 ```bash
 # Clone the repository
-git clone https://github.com/nl-to-shell/nl-to-shell.git
+git clone https://github.com/kanishka-sahoo/nl-to-shell.git
 cd nl-to-shell
 
 # Build for your platform
@@ -138,8 +138,8 @@ All releases include SHA256 checksums. To verify:
 
 ```bash
 # Download the binary and checksum
-wget https://github.com/nl-to-shell/nl-to-shell/releases/latest/download/nl-to-shell-linux-amd64
-wget https://github.com/nl-to-shell/nl-to-shell/releases/latest/download/nl-to-shell-linux-amd64.sha256
+wget https://github.com/kanishka-sahoo/nl-to-shell/releases/latest/download/nl-to-shell-linux-amd64
+wget https://github.com/kanishka-sahoo/nl-to-shell/releases/latest/download/nl-to-shell-linux-amd64.sha256
 
 # Verify checksum
 sha256sum -c nl-to-shell-linux-amd64.sha256
@@ -217,9 +217,9 @@ rm -rf ~/.config/nl-to-shell
 
 ## Getting Help
 
-- [Documentation](https://github.com/nl-to-shell/nl-to-shell/blob/main/README.md)
-- [Issues](https://github.com/nl-to-shell/nl-to-shell/issues)
-- [Discussions](https://github.com/nl-to-shell/nl-to-shell/discussions)
+- [Documentation](https://github.com/kanishka-sahoo/nl-to-shell/blob/main/README.md)
+- [Issues](https://github.com/kanishka-sahoo/nl-to-shell/issues)
+- [Discussions](https://github.com/kanishka-sahoo/nl-to-shell/discussions)
 
 For installation-specific issues, please include:
 - Your operating system and version

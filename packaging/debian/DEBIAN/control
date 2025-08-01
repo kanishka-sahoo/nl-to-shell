@@ -11,4 +11,4 @@ Description: Convert natural language to shell commands using LLMs
  .
  It provides context-aware command generation by analyzing your current working
  directory, git repository state, files, and other environmental factors.
-Homepage: https://github.com/nl-to-shell/nl-to-shell
+Homepage: https://github.com/kanishka-sahoo/nl-to-shell

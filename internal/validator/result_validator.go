@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/nl-to-shell/nl-to-shell/internal/interfaces"
-	"github.com/nl-to-shell/nl-to-shell/internal/types"
+	"github.com/kanishka-sahoo/nl-to-shell/internal/interfaces"
+	"github.com/kanishka-sahoo/nl-to-shell/internal/types"
 )
 
 // ResultValidator implements AI-powered result validation using LLM providers

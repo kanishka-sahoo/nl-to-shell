@@ -9,8 +9,8 @@ import (
 	"sort"
 	"sync"
 
-	"github.com/nl-to-shell/nl-to-shell/internal/interfaces"
-	"github.com/nl-to-shell/nl-to-shell/internal/types"
+	"github.com/kanishka-sahoo/nl-to-shell/internal/interfaces"
+	"github.com/kanishka-sahoo/nl-to-shell/internal/types"
 )
 
 // PluginManager manages context plugins with priority system and error isolation

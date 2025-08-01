@@ -9,18 +9,18 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/nl-to-shell/nl-to-shell/internal/config"
-	contextpkg "github.com/nl-to-shell/nl-to-shell/internal/context"
-	"github.com/nl-to-shell/nl-to-shell/internal/errors"
-	"github.com/nl-to-shell/nl-to-shell/internal/executor"
-	"github.com/nl-to-shell/nl-to-shell/internal/interfaces"
-	"github.com/nl-to-shell/nl-to-shell/internal/llm"
-	"github.com/nl-to-shell/nl-to-shell/internal/manager"
-	"github.com/nl-to-shell/nl-to-shell/internal/performance"
-	"github.com/nl-to-shell/nl-to-shell/internal/safety"
-	"github.com/nl-to-shell/nl-to-shell/internal/types"
-	"github.com/nl-to-shell/nl-to-shell/internal/updater"
-	"github.com/nl-to-shell/nl-to-shell/internal/validator"
+	"github.com/kanishka-sahoo/nl-to-shell/internal/config"
+	contextpkg "github.com/kanishka-sahoo/nl-to-shell/internal/context"
+	"github.com/kanishka-sahoo/nl-to-shell/internal/errors"
+	"github.com/kanishka-sahoo/nl-to-shell/internal/executor"
+	"github.com/kanishka-sahoo/nl-to-shell/internal/interfaces"
+	"github.com/kanishka-sahoo/nl-to-shell/internal/llm"
+	"github.com/kanishka-sahoo/nl-to-shell/internal/manager"
+	"github.com/kanishka-sahoo/nl-to-shell/internal/performance"
+	"github.com/kanishka-sahoo/nl-to-shell/internal/safety"
+	"github.com/kanishka-sahoo/nl-to-shell/internal/types"
+	"github.com/kanishka-sahoo/nl-to-shell/internal/updater"
+	"github.com/kanishka-sahoo/nl-to-shell/internal/validator"
 )
 
 var (

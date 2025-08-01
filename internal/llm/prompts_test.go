@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/nl-to-shell/nl-to-shell/internal/types"
+	"github.com/kanishka-sahoo/nl-to-shell/internal/types"
 )
 
 func TestPromptBuilder_BuildSystemPrompt(t *testing.T) {

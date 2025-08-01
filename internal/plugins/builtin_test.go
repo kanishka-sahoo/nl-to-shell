@@ -3,7 +3,7 @@ package plugins
 import (
 	"testing"
 
-	"github.com/nl-to-shell/nl-to-shell/internal/context"
+	"github.com/kanishka-sahoo/nl-to-shell/internal/context"
 )
 
 func TestRegisterBuiltinPlugins(t *testing.T) {

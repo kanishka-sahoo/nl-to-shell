@@ -24,7 +24,7 @@ $GIT_COMMIT = if ($env:GIT_COMMIT) { $env:GIT_COMMIT } else {
 $BUILD_DATE = if ($env:BUILD_DATE) { $env:BUILD_DATE } else { (Get-Date -Format "yyyy-MM-ddTHH:mm:ssZ") }
 
 # Go build flags for static linking and optimization
-$LDFLAGS = "-w -s -X 'github.com/nl-to-shell/nl-to-shell/internal/cli.Version=$VERSION' -X 'github.com/nl-to-shell/nl-to-shell/internal/cli.GitCommit=$GIT_COMMIT' -X 'github.com/nl-to-shell/nl-to-shell/internal/cli.BuildDate=$BUILD_DATE'"
+$LDFLAGS = "-w -s -X 'github.com/kanishka-sahoo/nl-to-shell/internal/cli.Version=$VERSION' -X 'github.com/kanishka-sahoo/nl-to-shell/internal/cli.GitCommit=$GIT_COMMIT' -X 'github.com/kanishka-sahoo/nl-to-shell/internal/cli.BuildDate=$BUILD_DATE'"
 
 # CGO settings for static builds
 $env:CGO_ENABLED = "0"

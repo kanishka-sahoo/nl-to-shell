@@ -5,7 +5,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/nl-to-shell/nl-to-shell/internal/types"
+	"github.com/kanishka-sahoo/nl-to-shell/internal/types"
 )
 
 // ContextCache manages caching for context gathering operations
