@@ -5,6 +5,10 @@ on:
     tags:
       - 'v*'
 
+permissions:
+  contents: write
+  packages: write
+
 env:
   GO_VERSION: '1.23'
 
@@ -13,7 +17,6 @@ jobs:
     name: Create Release
     runs-on: ubuntu-latest
     outputs:
-      upload_url: ${{ steps.create_release.outputs.upload_url }}
       version: ${{ steps.get_version.outputs.version }}
     steps:
     - name: Checkout code
@@ -49,12 +52,12 @@ jobs:
 
     - name: Create Release
       id: create_release
-      uses: actions/create-release@v1
+      uses: softprops/action-gh-release@v2
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         tag_name: ${{ github.ref }}
-        release_name: Release ${{ steps.get_version.outputs.version }}
+        name: Release ${{ steps.get_version.outputs.version }}
         body_path: formatted_changelog.md
         draft: false
         prerelease: ${{ contains(steps.get_version.outputs.version, '-') }}
@@ -136,35 +139,16 @@ jobs:
         chmod +x scripts/verify-binaries.sh
         ./scripts/verify-binaries.sh verify
 
-    - name: Upload Release Asset (Binary)
-      uses: actions/upload-release-asset@v1
+    - name: Upload Release Assets
+      uses: softprops/action-gh-release@v2
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
-        upload_url: ${{ needs.create-release.outputs.upload_url }}
-        asset_path: ./bin/nl-to-shell-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.goos == 'windows' && '.exe' || '' }}
-        asset_name: nl-to-shell-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.goos == 'windows' && '.exe' || '' }}
-        asset_content_type: application/octet-stream
-
-    - name: Upload Release Asset (Checksum)
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ needs.create-release.outputs.upload_url }}
-        asset_path: ./bin/nl-to-shell-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.goos == 'windows' && '.exe' || '' }}.sha256
-        asset_name: nl-to-shell-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.goos == 'windows' && '.exe' || '' }}.sha256
-        asset_content_type: text/plain
-
-    - name: Upload Release Asset (Archive)
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ needs.create-release.outputs.upload_url }}
-        asset_path: ./nl-to-shell-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.goos == 'windows' && '.zip' || '.tar.gz' }}
-        asset_name: nl-to-shell-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.goos == 'windows' && '.zip' || '.tar.gz' }}
-        asset_content_type: ${{ matrix.goos == 'windows' && 'application/zip' || 'application/gzip' }}
+        tag_name: ${{ needs.create-release.outputs.version }}
+        files: |
+          ./bin/nl-to-shell-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.goos == 'windows' && '.exe' || '' }}
+          ./bin/nl-to-shell-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.goos == 'windows' && '.exe' || '' }}.sha256
+          ./nl-to-shell-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.goos == 'windows' && '.zip' || '.tar.gz' }}
 
   build-docker:
     name: Build and Push Docker Image
@@ -280,25 +264,15 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
 
-    - name: Upload Unix installer script
-      uses: actions/upload-release-asset@v1
+    - name: Upload Installation Scripts
+      uses: softprops/action-gh-release@v2
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
-        upload_url: ${{ needs.create-release.outputs.upload_url }}
-        asset_path: ./scripts/install.sh
-        asset_name: install.sh
-        asset_content_type: text/plain
-
-    - name: Upload Windows installer script
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ needs.create-release.outputs.upload_url }}
-        asset_path: ./scripts/install.ps1
-        asset_name: install.ps1
-        asset_content_type: text/plain
+        tag_name: ${{ needs.create-release.outputs.version }}
+        files: |
+          ./scripts/install.sh
+          ./scripts/install.ps1
 
   notify-release:
     name: Notify Release
