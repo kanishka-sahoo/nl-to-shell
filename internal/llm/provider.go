@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/nl-to-shell/nl-to-shell/internal/cache"
 	"github.com/nl-to-shell/nl-to-shell/internal/interfaces"
 	"github.com/nl-to-shell/nl-to-shell/internal/types"
 )
@@ -169,10 +170,12 @@ func (f *ProviderFactory) CreateProvider(providerName string, config *types.Prov
 
 // BaseProvider provides common functionality for all providers
 type BaseProvider struct {
-	config        *types.ProviderConfig
-	retryConfig   *RetryConfig
-	httpClient    *http.Client
-	promptBuilder *PromptBuilder
+	config         *types.ProviderConfig
+	retryConfig    *RetryConfig
+	httpClient     *http.Client
+	promptBuilder  *PromptBuilder
+	providerCache  *cache.ProviderCache
+	metricsTracker *cache.MetricsTracker
 }
 
 // NewBaseProvider creates a new base provider
@@ -183,9 +186,11 @@ func NewBaseProvider(config *types.ProviderConfig, retryConfig *RetryConfig) *Ba
 	}
 
 	return &BaseProvider{
-		config:        config,
-		retryConfig:   retryConfig,
-		promptBuilder: NewPromptBuilder(),
+		config:         config,
+		retryConfig:    retryConfig,
+		promptBuilder:  NewPromptBuilder(),
+		providerCache:  cache.NewProviderCache(),
+		metricsTracker: cache.NewMetricsTracker(),
 		httpClient: &http.Client{
 			Timeout: timeout,
 		},
@@ -208,6 +213,14 @@ func (bp *BaseProvider) validateConfig() error {
 	return nil
 }
 
+// getModel returns the model to use for this provider (to be implemented by concrete providers)
+func (bp *BaseProvider) getModel() string {
+	if bp.config != nil && bp.config.DefaultModel != "" {
+		return bp.config.DefaultModel
+	}
+	return "default" // Fallback
+}
+
 // OpenAIProvider implements LLMProvider for OpenAI
 type OpenAIProvider struct {
 	*BaseProvider
@@ -224,8 +237,20 @@ func (p *OpenAIProvider) GenerateCommand(ctx context.Context, prompt string, con
 		return nil, err
 	}
 
+	providerName := p.GetProviderInfo().Name
+	model := p.getModel()
+
+	// Try cache first
+	if cachedResponse, exists := p.providerCache.GetCommandResponse(prompt, context, providerName, model); exists {
+		p.metricsTracker.RecordCommandHit()
+		return cachedResponse, nil
+	}
+
+	p.metricsTracker.RecordCommandMiss()
+
 	var response *types.CommandResponse
 	var err error
+	startTime := time.Now()
 
 	operation := func() error {
 		response, err = p.generateCommandInternal(ctx, prompt, context)
@@ -236,6 +261,14 @@ func (p *OpenAIProvider) GenerateCommand(ctx context.Context, prompt string, con
 		return nil, retryErr
 	}
 
+	// Record response time
+	p.metricsTracker.RecordResponseTime(time.Since(startTime))
+
+	// Cache the response
+	if cacheErr := p.providerCache.SetCommandResponse(prompt, context, providerName, model, response); cacheErr != nil {
+		// Log cache error but don't fail the operation
+	}
+
 	return response, nil
 }
 
@@ -244,8 +277,20 @@ func (p *OpenAIProvider) ValidateResult(ctx context.Context, command, output, in
 		return nil, err
 	}
 
+	providerName := p.GetProviderInfo().Name
+	model := p.getModel()
+
+	// Try cache first
+	if cachedResponse, exists := p.providerCache.GetValidationResponse(command, output, intent, providerName, model); exists {
+		p.metricsTracker.RecordValidationHit()
+		return cachedResponse, nil
+	}
+
+	p.metricsTracker.RecordValidationMiss()
+
 	var response *types.ValidationResponse
 	var err error
+	startTime := time.Now()
 
 	operation := func() error {
 		response, err = p.validateResultInternal(ctx, command, output, intent)
@@ -254,6 +299,14 @@ func (p *OpenAIProvider) ValidateResult(ctx context.Context, command, output, in
 
 	if retryErr := p.executeWithRetry(ctx, operation); retryErr != nil {
 		return nil, retryErr
+	}
+
+	// Record response time
+	p.metricsTracker.RecordResponseTime(time.Since(startTime))
+
+	// Cache the response
+	if cacheErr := p.providerCache.SetValidationResponse(command, output, intent, providerName, model, response); cacheErr != nil {
+		// Log cache error but don't fail the operation
 	}
 
 	return response, nil
@@ -283,8 +336,20 @@ func (p *AnthropicProvider) GenerateCommand(ctx context.Context, prompt string, 
 		return nil, err
 	}
 
+	providerName := p.GetProviderInfo().Name
+	model := p.getModel()
+
+	// Try cache first
+	if cachedResponse, exists := p.providerCache.GetCommandResponse(prompt, context, providerName, model); exists {
+		p.metricsTracker.RecordCommandHit()
+		return cachedResponse, nil
+	}
+
+	p.metricsTracker.RecordCommandMiss()
+
 	var response *types.CommandResponse
 	var err error
+	startTime := time.Now()
 
 	operation := func() error {
 		response, err = p.generateCommandInternal(ctx, prompt, context)
@@ -295,6 +360,14 @@ func (p *AnthropicProvider) GenerateCommand(ctx context.Context, prompt string, 
 		return nil, retryErr
 	}
 
+	// Record response time
+	p.metricsTracker.RecordResponseTime(time.Since(startTime))
+
+	// Cache the response
+	if cacheErr := p.providerCache.SetCommandResponse(prompt, context, providerName, model, response); cacheErr != nil {
+		// Log cache error but don't fail the operation
+	}
+
 	return response, nil
 }
 
@@ -303,8 +376,20 @@ func (p *AnthropicProvider) ValidateResult(ctx context.Context, command, output,
 		return nil, err
 	}
 
+	providerName := p.GetProviderInfo().Name
+	model := p.getModel()
+
+	// Try cache first
+	if cachedResponse, exists := p.providerCache.GetValidationResponse(command, output, intent, providerName, model); exists {
+		p.metricsTracker.RecordValidationHit()
+		return cachedResponse, nil
+	}
+
+	p.metricsTracker.RecordValidationMiss()
+
 	var response *types.ValidationResponse
 	var err error
+	startTime := time.Now()
 
 	operation := func() error {
 		response, err = p.validateResultInternal(ctx, command, output, intent)
@@ -313,6 +398,14 @@ func (p *AnthropicProvider) ValidateResult(ctx context.Context, command, output,
 
 	if retryErr := p.executeWithRetry(ctx, operation); retryErr != nil {
 		return nil, retryErr
+	}
+
+	// Record response time
+	p.metricsTracker.RecordResponseTime(time.Since(startTime))
+
+	// Cache the response
+	if cacheErr := p.providerCache.SetValidationResponse(command, output, intent, providerName, model, response); cacheErr != nil {
+		// Log cache error but don't fail the operation
 	}
 
 	return response, nil
@@ -342,8 +435,20 @@ func (p *GeminiProvider) GenerateCommand(ctx context.Context, prompt string, con
 		return nil, err
 	}
 
+	providerName := p.GetProviderInfo().Name
+	model := p.getModel()
+
+	// Try cache first
+	if cachedResponse, exists := p.providerCache.GetCommandResponse(prompt, context, providerName, model); exists {
+		p.metricsTracker.RecordCommandHit()
+		return cachedResponse, nil
+	}
+
+	p.metricsTracker.RecordCommandMiss()
+
 	var response *types.CommandResponse
 	var err error
+	startTime := time.Now()
 
 	operation := func() error {
 		response, err = p.generateCommandInternal(ctx, prompt, context)
@@ -354,6 +459,14 @@ func (p *GeminiProvider) GenerateCommand(ctx context.Context, prompt string, con
 		return nil, retryErr
 	}
 
+	// Record response time
+	p.metricsTracker.RecordResponseTime(time.Since(startTime))
+
+	// Cache the response
+	if cacheErr := p.providerCache.SetCommandResponse(prompt, context, providerName, model, response); cacheErr != nil {
+		// Log cache error but don't fail the operation
+	}
+
 	return response, nil
 }
 
@@ -362,8 +475,20 @@ func (p *GeminiProvider) ValidateResult(ctx context.Context, command, output, in
 		return nil, err
 	}
 
+	providerName := p.GetProviderInfo().Name
+	model := p.getModel()
+
+	// Try cache first
+	if cachedResponse, exists := p.providerCache.GetValidationResponse(command, output, intent, providerName, model); exists {
+		p.metricsTracker.RecordValidationHit()
+		return cachedResponse, nil
+	}
+
+	p.metricsTracker.RecordValidationMiss()
+
 	var response *types.ValidationResponse
 	var err error
+	startTime := time.Now()
 
 	operation := func() error {
 		response, err = p.validateResultInternal(ctx, command, output, intent)
@@ -372,6 +497,14 @@ func (p *GeminiProvider) ValidateResult(ctx context.Context, command, output, in
 
 	if retryErr := p.executeWithRetry(ctx, operation); retryErr != nil {
 		return nil, retryErr
+	}
+
+	// Record response time
+	p.metricsTracker.RecordResponseTime(time.Since(startTime))
+
+	// Cache the response
+	if cacheErr := p.providerCache.SetValidationResponse(command, output, intent, providerName, model, response); cacheErr != nil {
+		// Log cache error but don't fail the operation
 	}
 
 	return response, nil
@@ -401,8 +534,20 @@ func (p *OpenRouterProvider) GenerateCommand(ctx context.Context, prompt string,
 		return nil, err
 	}
 
+	providerName := p.GetProviderInfo().Name
+	model := p.getModel()
+
+	// Try cache first
+	if cachedResponse, exists := p.providerCache.GetCommandResponse(prompt, context, providerName, model); exists {
+		p.metricsTracker.RecordCommandHit()
+		return cachedResponse, nil
+	}
+
+	p.metricsTracker.RecordCommandMiss()
+
 	var response *types.CommandResponse
 	var err error
+	startTime := time.Now()
 
 	operation := func() error {
 		response, err = p.generateCommandInternal(ctx, prompt, context)
@@ -413,6 +558,14 @@ func (p *OpenRouterProvider) GenerateCommand(ctx context.Context, prompt string,
 		return nil, retryErr
 	}
 
+	// Record response time
+	p.metricsTracker.RecordResponseTime(time.Since(startTime))
+
+	// Cache the response
+	if cacheErr := p.providerCache.SetCommandResponse(prompt, context, providerName, model, response); cacheErr != nil {
+		// Log cache error but don't fail the operation
+	}
+
 	return response, nil
 }
 
@@ -421,8 +574,20 @@ func (p *OpenRouterProvider) ValidateResult(ctx context.Context, command, output
 		return nil, err
 	}
 
+	providerName := p.GetProviderInfo().Name
+	model := p.getModel()
+
+	// Try cache first
+	if cachedResponse, exists := p.providerCache.GetValidationResponse(command, output, intent, providerName, model); exists {
+		p.metricsTracker.RecordValidationHit()
+		return cachedResponse, nil
+	}
+
+	p.metricsTracker.RecordValidationMiss()
+
 	var response *types.ValidationResponse
 	var err error
+	startTime := time.Now()
 
 	operation := func() error {
 		response, err = p.validateResultInternal(ctx, command, output, intent)
@@ -431,6 +596,14 @@ func (p *OpenRouterProvider) ValidateResult(ctx context.Context, command, output
 
 	if retryErr := p.executeWithRetry(ctx, operation); retryErr != nil {
 		return nil, retryErr
+	}
+
+	// Record response time
+	p.metricsTracker.RecordResponseTime(time.Since(startTime))
+
+	// Cache the response
+	if cacheErr := p.providerCache.SetValidationResponse(command, output, intent, providerName, model, response); cacheErr != nil {
+		// Log cache error but don't fail the operation
 	}
 
 	return response, nil
@@ -460,8 +633,20 @@ func (p *OllamaProvider) GenerateCommand(ctx context.Context, prompt string, con
 		return nil, err
 	}
 
+	providerName := p.GetProviderInfo().Name
+	model := p.getModel()
+
+	// Try cache first
+	if cachedResponse, exists := p.providerCache.GetCommandResponse(prompt, context, providerName, model); exists {
+		p.metricsTracker.RecordCommandHit()
+		return cachedResponse, nil
+	}
+
+	p.metricsTracker.RecordCommandMiss()
+
 	var response *types.CommandResponse
 	var err error
+	startTime := time.Now()
 
 	operation := func() error {
 		response, err = p.generateCommandInternal(ctx, prompt, context)
@@ -472,6 +657,14 @@ func (p *OllamaProvider) GenerateCommand(ctx context.Context, prompt string, con
 		return nil, retryErr
 	}
 
+	// Record response time
+	p.metricsTracker.RecordResponseTime(time.Since(startTime))
+
+	// Cache the response
+	if cacheErr := p.providerCache.SetCommandResponse(prompt, context, providerName, model, response); cacheErr != nil {
+		// Log cache error but don't fail the operation
+	}
+
 	return response, nil
 }
 
@@ -480,8 +673,20 @@ func (p *OllamaProvider) ValidateResult(ctx context.Context, command, output, in
 		return nil, err
 	}
 
+	providerName := p.GetProviderInfo().Name
+	model := p.getModel()
+
+	// Try cache first
+	if cachedResponse, exists := p.providerCache.GetValidationResponse(command, output, intent, providerName, model); exists {
+		p.metricsTracker.RecordValidationHit()
+		return cachedResponse, nil
+	}
+
+	p.metricsTracker.RecordValidationMiss()
+
 	var response *types.ValidationResponse
 	var err error
+	startTime := time.Now()
 
 	operation := func() error {
 		response, err = p.validateResultInternal(ctx, command, output, intent)
@@ -490,6 +695,14 @@ func (p *OllamaProvider) ValidateResult(ctx context.Context, command, output, in
 
 	if retryErr := p.executeWithRetry(ctx, operation); retryErr != nil {
 		return nil, retryErr
+	}
+
+	// Record response time
+	p.metricsTracker.RecordResponseTime(time.Since(startTime))
+
+	// Cache the response
+	if cacheErr := p.providerCache.SetValidationResponse(command, output, intent, providerName, model, response); cacheErr != nil {
+		// Log cache error but don't fail the operation
 	}
 
 	return response, nil

@@ -4,16 +4,19 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/spf13/cobra"
 
 	"github.com/nl-to-shell/nl-to-shell/internal/config"
 	contextpkg "github.com/nl-to-shell/nl-to-shell/internal/context"
+	"github.com/nl-to-shell/nl-to-shell/internal/errors"
 	"github.com/nl-to-shell/nl-to-shell/internal/executor"
 	"github.com/nl-to-shell/nl-to-shell/internal/interfaces"
 	"github.com/nl-to-shell/nl-to-shell/internal/llm"
 	"github.com/nl-to-shell/nl-to-shell/internal/manager"
+	"github.com/nl-to-shell/nl-to-shell/internal/performance"
 	"github.com/nl-to-shell/nl-to-shell/internal/safety"
 	"github.com/nl-to-shell/nl-to-shell/internal/types"
 	"github.com/nl-to-shell/nl-to-shell/internal/updater"
@@ -29,6 +32,10 @@ var (
 	skipConfirmation bool
 	validateResults  bool
 	sessionMode      bool
+
+	// Global infrastructure
+	globalMonitor *performance.Monitor
+	globalLogger  errors.Logger
 )
 
 // Version information - will be set during build
@@ -42,13 +49,12 @@ var (
 var rootCmd = &cobra.Command{
 	Use:   "nl-to-shell",
 	Short: "Convert natural language to shell commands",
-	Long: `nl-to-shell is a CLI utility that converts natural language descriptions 
-into executable shell commands using Large Language Models (LLMs).
+	Long: `Convert natural language to shell commands using Large Language Models (LLMs).
 
-It provides context-aware command generation by analyzing your current working 
+Provides context-aware command generation by analyzing your current working 
 directory, git repository state, files, and other environmental factors.
 
-The tool emphasizes safety through dangerous command detection, user confirmation 
+Emphasizes safety through dangerous command detection, user confirmation 
 prompts, and validation systems while supporting multiple AI providers and 
 cross-platform compatibility.`,
 	Example: `  # Generate a command from natural language
@@ -71,6 +77,24 @@ cross-platform compatibility.`,
 			return cmd.Help()
 		}
 
+		// Check if the argument looks like a subcommand that doesn't exist
+		arg := args[0]
+		if !strings.Contains(arg, " ") && len(arg) > 0 && arg[0] != '-' {
+			// Check if it's a known subcommand
+			isKnownSubcommand := false
+			for _, subCmd := range cmd.Commands() {
+				if subCmd.Name() == arg || subCmd.HasAlias(arg) {
+					isKnownSubcommand = true
+					break
+				}
+			}
+
+			// If it looks like a command but isn't known, return unknown command error
+			if !isKnownSubcommand && !strings.Contains(arg, " ") {
+				return fmt.Errorf("unknown command \"%s\" for \"%s\"", arg, cmd.CommandPath())
+			}
+		}
+
 		return executeCommandGeneration(args[0])
 	},
 	SilenceUsage: true, // Don't show usage on errors
@@ -80,6 +104,11 @@ cross-platform compatibility.`,
 // This is called by main.main(). It only needs to happen once to the rootCmd.
 func Execute() error {
 	return rootCmd.Execute()
+}
+
+// ExecuteWithContext executes the root command with the provided context
+func ExecuteWithContext(ctx context.Context) error {
+	return rootCmd.ExecuteContext(ctx)
 }
 
 // completionCmd represents the completion command
@@ -143,6 +172,9 @@ PowerShell:
 }
 
 func init() {
+	// Initialize global infrastructure
+	initializeGlobalInfrastructure()
+
 	// Global flags that apply to all commands
 	rootCmd.PersistentFlags().BoolVar(&dryRun, "dry-run", false, "Preview the command without executing it")
 	rootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "Enable verbose output for detailed information")
@@ -157,7 +189,25 @@ func init() {
 	rootCmd.AddCommand(sessionCmd)
 	rootCmd.AddCommand(updateCmd)
 	rootCmd.AddCommand(versionCmd)
+	rootCmd.AddCommand(helpCmd)
 	rootCmd.AddCommand(completionCmd)
+}
+
+// initializeGlobalInfrastructure sets up monitoring and logging
+func initializeGlobalInfrastructure() {
+	// Initialize performance monitoring
+	monitorConfig := &performance.MonitorConfig{
+		Enabled:              true,
+		MaxMetrics:           5000,
+		CollectionInterval:   60 * time.Second,
+		EnableMemoryStats:    true,
+		EnableGoroutineStats: true,
+	}
+	globalMonitor = performance.NewMonitor(monitorConfig)
+
+	// Initialize structured logging
+	globalLogger = errors.NewStructuredLogger(false)
+	errors.SetGlobalLogger(globalLogger)
 }
 
 // generateCmd represents the generate command (explicit command for generation)
@@ -181,7 +231,7 @@ This is the main functionality of nl-to-shell.`,
 var configCmd = &cobra.Command{
 	Use:   "config",
 	Short: "Manage configuration settings",
-	Long: `Configure providers, credentials, and user preferences.
+	Long: `Manage configuration settings for nl-to-shell.
 Use subcommands to set up providers, view current configuration, or reset settings.`,
 }
 
@@ -189,31 +239,25 @@ Use subcommands to set up providers, view current configuration, or reset settin
 var setupCmd = &cobra.Command{
 	Use:   "setup",
 	Short: "Interactive configuration setup",
-	Long: `Run interactive setup to configure providers and credentials.
+	Long: `Interactive configuration setup for nl-to-shell.
 This will guide you through setting up API keys and preferences.`,
-	RunE: func(cmd *cobra.Command, args []string) error {
-		return fmt.Errorf("configuration setup not yet implemented")
-	},
+	RunE: executeConfigSetup,
 }
 
 // showCmd represents the config show command
 var showCmd = &cobra.Command{
 	Use:   "show",
 	Short: "Show current configuration",
-	Long:  `Display the current configuration settings (credentials will be masked).`,
-	RunE: func(cmd *cobra.Command, args []string) error {
-		return fmt.Errorf("configuration display not yet implemented")
-	},
+	Long:  `Show current configuration settings (credentials will be masked).`,
+	RunE:  executeConfigShow,
 }
 
 // resetCmd represents the config reset command
 var resetCmd = &cobra.Command{
 	Use:   "reset",
 	Short: "Reset configuration to defaults",
-	Long:  `Reset all configuration settings to their default values.`,
-	RunE: func(cmd *cobra.Command, args []string) error {
-		return fmt.Errorf("configuration reset not yet implemented")
-	},
+	Long:  `Reset configuration to defaults.`,
+	RunE:  executeConfigReset,
 }
 
 // sessionCmd represents the session command
@@ -246,7 +290,7 @@ In session mode, you can:
 var updateCmd = &cobra.Command{
 	Use:   "update",
 	Short: "Manage updates",
-	Long: `Check for and install updates to nl-to-shell.
+	Long: `Manage updates for nl-to-shell.
 Use subcommands to check for updates or install them.`,
 }
 
@@ -254,7 +298,7 @@ Use subcommands to check for updates or install them.`,
 var checkCmd = &cobra.Command{
 	Use:   "check",
 	Short: "Check for available updates",
-	Long:  `Check if there are any available updates without installing them.`,
+	Long:  `Check for available updates without installing them.`,
 	RunE:  executeUpdateCheck,
 }
 
@@ -262,7 +306,7 @@ var checkCmd = &cobra.Command{
 var installCmd = &cobra.Command{
 	Use:   "install",
 	Short: "Install available updates",
-	Long:  `Install the latest available update.`,
+	Long:  `Install available updates.`,
 	RunE:  executeUpdateInstall,
 }
 
@@ -278,6 +322,23 @@ var versionCmd = &cobra.Command{
 			fmt.Printf("Build date: %s\n", BuildDate)
 		}
 	},
+}
+
+// helpCmd represents the help command
+var helpCmd = &cobra.Command{
+	Use:   "help [topic]",
+	Short: "Show comprehensive help information",
+	Long: `Display detailed help information about nl-to-shell usage, features, and configuration.
+Use without arguments to see an overview, or specify a topic for detailed information.`,
+	Example: `  # Show general help overview
+  nl-to-shell help
+  
+  # Get help on specific topics
+  nl-to-shell help getting-started
+  nl-to-shell help providers
+  nl-to-shell help safety`,
+	Args: cobra.MaximumNArgs(1),
+	RunE: executeHelp,
 }
 
 func init() {
@@ -320,17 +381,47 @@ type GlobalFlags struct {
 	SessionMode      bool
 }
 
-// executeCommandGeneration handles the main command generation flow
+// executeCommandGeneration handles the main command generation flow with comprehensive monitoring
 func executeCommandGeneration(input string) error {
+	// Start overall timing
+	timer := globalMonitor.StartTimer("command_generation.total_time", map[string]string{
+		"provider": provider,
+		"dry_run":  fmt.Sprintf("%v", dryRun),
+	})
+	defer timer.Stop()
+
+	// Record command generation attempt
+	globalMonitor.RecordCounter("command_generation.attempts", 1, map[string]string{
+		"provider": provider,
+		"dry_run":  fmt.Sprintf("%v", dryRun),
+	})
+
 	ctx := context.Background()
 
-	// Load configuration
+	// Load configuration with monitoring
+	configTimer := globalMonitor.StartTimer("command_generation.config_load", nil)
 	configManager := config.NewManager()
 	cfg, err := configManager.Load()
+	configTimer.Stop()
+
 	if err != nil {
+		// Log configuration load error
+		nlErr := &types.NLShellError{
+			Type:      types.ErrTypeConfiguration,
+			Message:   "failed to load configuration",
+			Cause:     err,
+			Severity:  types.SeverityWarning,
+			Timestamp: time.Now(),
+			Context: map[string]interface{}{
+				"input": input,
+			},
+		}
+		globalLogger.LogError(nlErr)
+
 		if verbose {
 			fmt.Fprintf(os.Stderr, "Warning: Could not load configuration: %v\n", err)
 		}
+
 		// Use default configuration
 		cfg = &types.Config{
 			DefaultProvider: "openai",
@@ -341,6 +432,10 @@ func executeCommandGeneration(input string) error {
 				EnablePlugins:   true,
 			},
 		}
+
+		globalMonitor.RecordCounter("command_generation.config_load_failures", 1, nil)
+	} else {
+		globalMonitor.RecordCounter("command_generation.config_load_success", 1, nil)
 	}
 
 	// Override configuration with CLI flags
@@ -348,23 +443,38 @@ func executeCommandGeneration(input string) error {
 		cfg.DefaultProvider = provider
 	}
 
-	// Create components
+	// Create components with monitoring
+	componentTimer := globalMonitor.StartTimer("command_generation.component_creation", nil)
+
 	contextGatherer := contextpkg.NewGatherer()
 	safetyValidator := safety.NewValidator()
 	commandExecutor := executor.NewExecutor()
 
-	// Create a temporary LLM provider for result validator
-	tempProvider, err := createLLMProvider(cfg)
-	if err != nil {
-		return fmt.Errorf("failed to create LLM provider for validator: %w", err)
-	}
-	resultValidator := validator.NewResultValidator(tempProvider)
-
-	// Create LLM provider
+	// Create LLM provider with error handling
 	llmProvider, err := createLLMProvider(cfg)
 	if err != nil {
+		componentTimer.Stop()
+
+		nlErr := &types.NLShellError{
+			Type:      types.ErrTypeProvider,
+			Message:   "failed to create LLM provider",
+			Cause:     err,
+			Severity:  types.SeverityError,
+			Timestamp: time.Now(),
+			Context: map[string]interface{}{
+				"input":    input,
+				"provider": cfg.DefaultProvider,
+			},
+		}
+		globalLogger.LogError(nlErr)
+		globalMonitor.RecordCounter("command_generation.provider_creation_failures", 1, map[string]string{
+			"provider": cfg.DefaultProvider,
+		})
+
 		return fmt.Errorf("failed to create LLM provider: %w", err)
 	}
+
+	resultValidator := validator.NewResultValidator(llmProvider)
 
 	// Create command manager
 	commandManager := manager.NewManager(
@@ -376,6 +486,9 @@ func executeCommandGeneration(input string) error {
 		cfg,
 	)
 
+	componentTimer.Stop()
+	globalMonitor.RecordCounter("command_generation.component_creation_success", 1, nil)
+
 	// Create execution options from CLI flags
 	options := &types.ExecutionOptions{
 		DryRun:           dryRun,
@@ -384,14 +497,71 @@ func executeCommandGeneration(input string) error {
 		Timeout:          cfg.UserPreferences.DefaultTimeout,
 	}
 
-	// Execute the full pipeline
+	// Execute the full pipeline with monitoring
+	pipelineTimer := globalMonitor.StartTimer("command_generation.pipeline_execution", map[string]string{
+		"provider":          cfg.DefaultProvider,
+		"dry_run":           fmt.Sprintf("%v", dryRun),
+		"skip_confirmation": fmt.Sprintf("%v", skipConfirmation),
+		"validate_results":  fmt.Sprintf("%v", validateResults),
+	})
+
 	result, err := commandManager.GenerateAndExecute(ctx, input, options)
+	pipelineTimer.Stop()
+
 	if err != nil {
+		// Log pipeline execution error
+		nlErr, ok := err.(*types.NLShellError)
+		if !ok {
+			nlErr = &types.NLShellError{
+				Type:      types.ErrTypeValidation,
+				Message:   "command generation pipeline failed",
+				Cause:     err,
+				Severity:  types.SeverityError,
+				Timestamp: time.Now(),
+				Context: map[string]interface{}{
+					"input":    input,
+					"provider": cfg.DefaultProvider,
+					"options":  options,
+				},
+			}
+		}
+		globalLogger.LogError(nlErr)
+		globalMonitor.RecordCounter("command_generation.pipeline_failures", 1, map[string]string{
+			"provider":   cfg.DefaultProvider,
+			"error_type": nlErr.Type.String(),
+		})
+
 		return fmt.Errorf("command generation failed: %w", err)
 	}
 
-	// Display results
-	return displayResults(result, input)
+	globalMonitor.RecordCounter("command_generation.pipeline_success", 1, map[string]string{
+		"provider": cfg.DefaultProvider,
+	})
+
+	// Record result metrics
+	recordResultMetrics(result, cfg.DefaultProvider)
+
+	// Display results with monitoring
+	displayTimer := globalMonitor.StartTimer("command_generation.result_display", nil)
+	displayErr := displayResults(result, input)
+	displayTimer.Stop()
+
+	if displayErr != nil {
+		nlErr := &types.NLShellError{
+			Type:      types.ErrTypeValidation,
+			Message:   "failed to display results",
+			Cause:     displayErr,
+			Severity:  types.SeverityWarning,
+			Timestamp: time.Now(),
+			Context: map[string]interface{}{
+				"input": input,
+			},
+		}
+		globalLogger.LogError(nlErr)
+		globalMonitor.RecordCounter("command_generation.display_failures", 1, nil)
+	}
+
+	return displayErr
 }
 
 // createLLMProvider creates an LLM provider based on configuration
@@ -417,23 +587,93 @@ func createLLMProvider(cfg *types.Config) (interfaces.LLMProvider, error) {
 	return factory.CreateProvider(providerName, &providerConfig)
 }
 
-// displayResults displays the command generation and execution results
-func displayResults(result *types.FullResult, _ string) error {
-	// Display generated command
+// recordResultMetrics records metrics about the command generation results
+func recordResultMetrics(result *types.FullResult, provider string) {
+	if result == nil {
+		return
+	}
+
+	tags := map[string]string{
+		"provider": provider,
+	}
+
+	// Record command result metrics
+	if result.CommandResult != nil {
+		globalMonitor.RecordGauge("command_generation.confidence", result.CommandResult.Confidence, "score", tags)
+		globalMonitor.RecordGauge("command_generation.alternatives_count", float64(len(result.CommandResult.Alternatives)), "count", tags)
+
+		if result.CommandResult.Safety != nil {
+			globalMonitor.RecordCounter("command_generation.safety_checks", 1, map[string]string{
+				"provider":     provider,
+				"danger_level": result.CommandResult.Safety.DangerLevel.String(),
+				"is_safe":      fmt.Sprintf("%v", result.CommandResult.Safety.IsSafe),
+			})
+		}
+	}
+
+	// Record execution metrics
+	if result.ExecutionResult != nil {
+		globalMonitor.RecordCounter("command_generation.executions", 1, map[string]string{
+			"provider":  provider,
+			"exit_code": fmt.Sprintf("%d", result.ExecutionResult.ExitCode),
+			"success":   fmt.Sprintf("%v", result.ExecutionResult.Success),
+		})
+
+		globalMonitor.RecordDuration("command_generation.execution_time", result.ExecutionResult.Duration, tags)
+	}
+
+	// Record validation metrics
+	if result.ValidationResult != nil {
+		globalMonitor.RecordCounter("command_generation.validations", 1, map[string]string{
+			"provider":   provider,
+			"is_correct": fmt.Sprintf("%v", result.ValidationResult.IsCorrect),
+		})
+	}
+
+	// Record dry run metrics
+	if result.DryRunResult != nil {
+		globalMonitor.RecordCounter("command_generation.dry_runs", 1, tags)
+	}
+
+	// Record confirmation requirements
+	if result.RequiresConfirmation {
+		globalMonitor.RecordCounter("command_generation.confirmations_required", 1, tags)
+	}
+}
+
+// displayResults displays the command generation and execution results with enhanced formatting
+func displayResults(result *types.FullResult, originalInput string) error {
+	if result == nil || result.CommandResult == nil {
+		return fmt.Errorf("no results to display")
+	}
+
+	// Display generated command (maintain backward compatibility)
 	fmt.Printf("Generated command: %s\n", result.CommandResult.Command.Generated)
 
+	// Display confidence and metadata
 	if verbose {
 		fmt.Printf("Confidence: %.2f\n", result.CommandResult.Confidence)
+
+		// Safely access provider information
+		provider := "unknown"
+		if result.CommandResult.Command.Context != nil && result.CommandResult.Command.Context.Environment != nil {
+			if p, exists := result.CommandResult.Command.Context.Environment["PROVIDER"]; exists {
+				provider = p
+			}
+		}
+		fmt.Printf("Provider: %s\n", provider)
+		fmt.Printf("Generated at: %s\n", result.CommandResult.Command.Timestamp.Format(time.RFC3339))
+
 		if len(result.CommandResult.Alternatives) > 0 {
-			fmt.Println("Alternatives:")
+			fmt.Println("\nAlternatives:")
 			for i, alt := range result.CommandResult.Alternatives {
 				fmt.Printf("  %d. %s\n", i+1, alt)
 			}
 		}
 	}
 
-	// Display safety information
-	if result.CommandResult.Safety.DangerLevel > types.Safe {
+	// Display safety information (maintain backward compatibility)
+	if result.CommandResult.Safety != nil && result.CommandResult.Safety.DangerLevel > types.Safe {
 		fmt.Printf("⚠️  Safety level: %s\n", result.CommandResult.Safety.DangerLevel.String())
 		if len(result.CommandResult.Safety.Warnings) > 0 {
 			fmt.Println("Warnings:")
@@ -443,7 +683,7 @@ func displayResults(result *types.FullResult, _ string) error {
 		}
 	}
 
-	// Handle dry run results
+	// Handle dry run results (maintain backward compatibility)
 	if result.DryRunResult != nil {
 		fmt.Println("\n--- Dry Run Analysis ---")
 		fmt.Printf("Analysis: %s\n", result.DryRunResult.Analysis)
@@ -456,13 +696,13 @@ func displayResults(result *types.FullResult, _ string) error {
 		return nil
 	}
 
-	// Handle confirmation requirement
+	// Handle confirmation requirement (maintain backward compatibility)
 	if result.RequiresConfirmation {
 		fmt.Printf("\n⚠️  This command requires confirmation. Use --skip-confirmation to bypass.\n")
 		return nil
 	}
 
-	// Display execution results
+	// Display execution results (maintain backward compatibility)
 	if result.ExecutionResult != nil {
 		fmt.Println("\n--- Execution Results ---")
 		fmt.Printf("Exit code: %d\n", result.ExecutionResult.ExitCode)
@@ -478,7 +718,7 @@ func displayResults(result *types.FullResult, _ string) error {
 			fmt.Println(result.ExecutionResult.Stderr)
 		}
 
-		// Display validation results
+		// Display validation results (maintain backward compatibility)
 		if result.ValidationResult != nil {
 			fmt.Println("\n--- Validation Results ---")
 			if result.ValidationResult.IsCorrect {
@@ -622,4 +862,182 @@ func executeUpdateInstall(cmd *cobra.Command, args []string) error {
 	fmt.Println("Please restart nl-to-shell to use the new version.")
 
 	return nil
+}
+
+// executeConfigSetup handles the config setup command
+func executeConfigSetup(cmd *cobra.Command, args []string) error {
+	timer := globalMonitor.StartTimer("config.setup", nil)
+	defer timer.Stop()
+
+	fmt.Println("🔧 nl-to-shell Configuration Setup")
+	fmt.Println("===================================")
+
+	configManager := config.NewManager()
+
+	// Try to load existing configuration
+	_, err := configManager.Load()
+	if err != nil && verbose {
+		fmt.Printf("Creating new configuration (existing config not found: %v)\n", err)
+	}
+
+	// Run interactive setup
+	if err := configManager.SetupInteractive(); err != nil {
+		nlErr := &types.NLShellError{
+			Type:      types.ErrTypeConfiguration,
+			Message:   "interactive configuration setup failed",
+			Cause:     err,
+			Severity:  types.SeverityError,
+			Timestamp: time.Now(),
+		}
+		globalLogger.LogError(nlErr)
+		globalMonitor.RecordCounter("config.setup_failures", 1, nil)
+		return fmt.Errorf("configuration setup failed: %w", err)
+	}
+
+	globalMonitor.RecordCounter("config.setup_success", 1, nil)
+	fmt.Println("✅ Configuration setup completed successfully!")
+	return nil
+}
+
+// executeConfigShow handles the config show command
+func executeConfigShow(cmd *cobra.Command, args []string) error {
+	timer := globalMonitor.StartTimer("config.show", nil)
+	defer timer.Stop()
+
+	configManager := config.NewManager()
+	cfg, err := configManager.Load()
+	if err != nil {
+		nlErr := &types.NLShellError{
+			Type:      types.ErrTypeConfiguration,
+			Message:   "failed to load configuration",
+			Cause:     err,
+			Severity:  types.SeverityError,
+			Timestamp: time.Now(),
+		}
+		globalLogger.LogError(nlErr)
+		return fmt.Errorf("failed to load configuration: %w", err)
+	}
+
+	fmt.Println("⚙️  Current Configuration")
+	fmt.Println("========================")
+	fmt.Printf("Default Provider: %s\n", cfg.DefaultProvider)
+
+	fmt.Println("\nConfigured Providers:")
+	for name, providerCfg := range cfg.Providers {
+		fmt.Printf("  %s:\n", name)
+		fmt.Printf("    Default Model: %s\n", providerCfg.DefaultModel)
+		fmt.Printf("    Timeout: %v\n", providerCfg.Timeout)
+		if providerCfg.BaseURL != "" {
+			fmt.Printf("    Base URL: %s\n", providerCfg.BaseURL)
+		}
+		// Mask API key
+		if providerCfg.APIKey != "" {
+			fmt.Printf("    API Key: %s***\n", providerCfg.APIKey[:min(8, len(providerCfg.APIKey))])
+		} else {
+			fmt.Printf("    API Key: (not configured)\n")
+		}
+	}
+
+	fmt.Println("\nUser Preferences:")
+	fmt.Printf("  Default Timeout: %v\n", cfg.UserPreferences.DefaultTimeout)
+	fmt.Printf("  Max File List Size: %d\n", cfg.UserPreferences.MaxFileListSize)
+	fmt.Printf("  Enable Plugins: %v\n", cfg.UserPreferences.EnablePlugins)
+	fmt.Printf("  Auto Update: %v\n", cfg.UserPreferences.AutoUpdate)
+
+	fmt.Println("\nUpdate Settings:")
+	fmt.Printf("  Auto Check: %v\n", cfg.UpdateSettings.AutoCheck)
+	fmt.Printf("  Check Interval: %v\n", cfg.UpdateSettings.CheckInterval)
+	fmt.Printf("  Allow Prerelease: %v\n", cfg.UpdateSettings.AllowPrerelease)
+	fmt.Printf("  Backup Before Update: %v\n", cfg.UpdateSettings.BackupBeforeUpdate)
+
+	globalMonitor.RecordCounter("config.show_success", 1, nil)
+	return nil
+}
+
+// executeConfigReset handles the config reset command
+func executeConfigReset(cmd *cobra.Command, args []string) error {
+	timer := globalMonitor.StartTimer("config.reset", nil)
+	defer timer.Stop()
+
+	fmt.Println("⚠️  Configuration Reset")
+	fmt.Println("======================")
+	fmt.Println("This will reset all configuration settings to their default values.")
+	fmt.Print("Are you sure you want to continue? (y/N): ")
+
+	var response string
+	fmt.Scanln(&response)
+	if strings.ToLower(response) != "y" && strings.ToLower(response) != "yes" {
+		fmt.Println("Configuration reset cancelled.")
+		return nil
+	}
+
+	// Create default configuration
+	defaultCfg := &types.Config{
+		DefaultProvider: "openai",
+		Providers:       make(map[string]types.ProviderConfig),
+		UserPreferences: types.UserPreferences{
+			DefaultTimeout:  30 * time.Second,
+			MaxFileListSize: 100,
+			EnablePlugins:   true,
+			AutoUpdate:      true,
+		},
+		UpdateSettings: types.UpdateSettings{
+			AutoCheck:          true,
+			CheckInterval:      24 * time.Hour,
+			AllowPrerelease:    false,
+			BackupBeforeUpdate: true,
+		},
+	}
+
+	configManager := config.NewManager()
+	if err := configManager.Save(defaultCfg); err != nil {
+		nlErr := &types.NLShellError{
+			Type:      types.ErrTypeConfiguration,
+			Message:   "failed to save default configuration",
+			Cause:     err,
+			Severity:  types.SeverityError,
+			Timestamp: time.Now(),
+		}
+		globalLogger.LogError(nlErr)
+		globalMonitor.RecordCounter("config.reset_failures", 1, nil)
+		return fmt.Errorf("failed to reset configuration: %w", err)
+	}
+
+	globalMonitor.RecordCounter("config.reset_success", 1, nil)
+	fmt.Println("✅ Configuration has been reset to default values.")
+	fmt.Println("Run 'nl-to-shell config setup' to configure providers.")
+	return nil
+}
+
+// executeHelp handles the help command
+func executeHelp(cmd *cobra.Command, args []string) error {
+	helpSystem := NewHelpSystem()
+
+	if len(args) == 0 {
+		// Show overview
+		helpSystem.DisplayOverview()
+		return nil
+	}
+
+	// Show specific topic
+	topic := args[0]
+	if err := helpSystem.DisplayTopic(topic); err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		fmt.Println("\nAvailable topics:")
+		topics := helpSystem.ListTopics()
+		for _, t := range topics {
+			fmt.Printf("  - %s\n", t)
+		}
+		return err
+	}
+
+	return nil
+}
+
+// min returns the minimum of two integers
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
 }

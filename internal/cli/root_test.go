@@ -2,6 +2,7 @@ package cli
 
 import (
 	"bytes"
+	"fmt"
 	"strings"
 	"testing"
 
@@ -18,13 +19,13 @@ func TestRootCommand(t *testing.T) {
 		{
 			name:           "no arguments shows help",
 			args:           []string{},
-			expectedOutput: "nl-to-shell is a CLI utility",
+			expectedOutput: "Convert natural language to shell commands",
 			expectError:    false,
 		},
 		{
 			name:           "help flag shows help",
 			args:           []string{"--help"},
-			expectedOutput: "nl-to-shell is a CLI utility",
+			expectedOutput: "Convert natural language to shell commands",
 			expectError:    false,
 		},
 		{
@@ -315,13 +316,34 @@ func createTestRootCmd() *cobra.Command {
 	testRootCmd := &cobra.Command{
 		Use:   "nl-to-shell",
 		Short: "Convert natural language to shell commands",
-		Long: `nl-to-shell is a CLI utility that converts natural language descriptions 
-into executable shell commands using Large Language Models (LLMs).`,
+		Long: `Convert natural language to shell commands using Large Language Models (LLMs).
+
+Provides context-aware command generation by analyzing your current working 
+directory, git repository state, files, and other environmental factors.`,
 		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) == 0 {
 				return cmd.Help()
 			}
+
+			// Check if the argument looks like a subcommand that doesn't exist
+			arg := args[0]
+			if !strings.Contains(arg, " ") && len(arg) > 0 && arg[0] != '-' {
+				// Check if it's a known subcommand
+				isKnownSubcommand := false
+				for _, subCmd := range cmd.Commands() {
+					if subCmd.Name() == arg || subCmd.HasAlias(arg) {
+						isKnownSubcommand = true
+						break
+					}
+				}
+
+				// If it looks like a command but isn't known, return unknown command error
+				if !isKnownSubcommand && !strings.Contains(arg, " ") {
+					return fmt.Errorf("unknown command \"%s\" for \"%s\"", arg, cmd.CommandPath())
+				}
+			}
+
 			return nil
 		},
 		SilenceUsage: true,

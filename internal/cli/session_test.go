@@ -264,7 +264,7 @@ func TestSessionStateCreationWithFlags(t *testing.T) {
 			setupFlags: func() {
 				resetGlobalFlags()
 			},
-			expectError: true, // Expected due to missing config in test
+			expectError: false, // NewSessionState creates default config when loading fails
 		},
 		{
 			name: "with provider flag",
@@ -272,7 +272,7 @@ func TestSessionStateCreationWithFlags(t *testing.T) {
 				resetGlobalFlags()
 				provider = "openai"
 			},
-			expectError: true, // Expected due to missing config in test
+			expectError: false, // NewSessionState creates default config when loading fails
 		},
 		{
 			name: "with verbose flag",
@@ -280,7 +280,7 @@ func TestSessionStateCreationWithFlags(t *testing.T) {
 				resetGlobalFlags()
 				verbose = true
 			},
-			expectError: true, // Expected due to missing config in test
+			expectError: false, // NewSessionState creates default config when loading fails
 		},
 		{
 			name: "with dry-run flag",
@@ -288,7 +288,7 @@ func TestSessionStateCreationWithFlags(t *testing.T) {
 				resetGlobalFlags()
 				dryRun = true
 			},
-			expectError: true, // Expected due to missing config in test
+			expectError: false, // NewSessionState creates default config when loading fails
 		},
 	}
 
@@ -301,10 +301,11 @@ func TestSessionStateCreationWithFlags(t *testing.T) {
 			if tt.expectError {
 				if err == nil {
 					t.Error("expected error but got none")
-				}
-				// In test environment, we expect configuration-related errors
-				if !strings.Contains(err.Error(), "provider") && !strings.Contains(err.Error(), "config") {
-					t.Errorf("expected configuration error, got: %v", err)
+				} else {
+					// In test environment, we expect configuration-related errors
+					if !strings.Contains(err.Error(), "provider") && !strings.Contains(err.Error(), "config") {
+						t.Errorf("expected configuration error, got: %v", err)
+					}
 				}
 			} else {
 				if err != nil {
