@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"sort"
 	"sync"
 	"time"
 
@@ -312,8 +313,15 @@ func CacheKeyFromContext(ctx *types.Context) string {
 	}
 
 	// Add environment variables that might affect commands
-	for key, value := range ctx.Environment {
-		components = append(components, fmt.Sprintf("%s=%s", key, value))
+	// Sort keys to ensure consistent ordering
+	var envKeys []string
+	for key := range ctx.Environment {
+		envKeys = append(envKeys, key)
+	}
+	sort.Strings(envKeys)
+
+	for _, key := range envKeys {
+		components = append(components, fmt.Sprintf("%s=%s", key, ctx.Environment[key]))
 	}
 
 	return CacheKey(components...)

@@ -192,10 +192,12 @@ func (p *DevToolsPlugin) detectRuntimes(_ context.Context) map[string]interface{
 // detectNodeRuntime detects Node.js runtime information
 func (p *DevToolsPlugin) detectNodeRuntime() map[string]interface{} {
 	nodeInfo := make(map[string]interface{})
+	hasNodeProject := false
 
 	// Check for package.json
 	if _, err := os.Stat("package.json"); err == nil {
 		nodeInfo["has_package_json"] = true
+		hasNodeProject = true
 
 		// Check for node_modules
 		if _, err := os.Stat("node_modules"); err == nil {
@@ -215,12 +217,23 @@ func (p *DevToolsPlugin) detectNodeRuntime() map[string]interface{} {
 		}
 	}
 
-	// Check for NVM
-	if nvmDir := os.Getenv("NVM_DIR"); nvmDir != "" {
-		nodeInfo["nvm_dir"] = nvmDir
+	// Check for other Node.js indicators
+	nodeFiles := []string{".nvmrc", ".node-version"}
+	for _, file := range nodeFiles {
+		if _, err := os.Stat(file); err == nil {
+			hasNodeProject = true
+			break
+		}
 	}
 
-	if len(nodeInfo) > 0 {
+	// Only add NVM info if we have a Node.js project
+	if hasNodeProject {
+		if nvmDir := os.Getenv("NVM_DIR"); nvmDir != "" {
+			nodeInfo["nvm_dir"] = nvmDir
+		}
+	}
+
+	if hasNodeProject && len(nodeInfo) > 0 {
 		return nodeInfo
 	}
 	return nil
@@ -268,6 +281,7 @@ func (p *DevToolsPlugin) detectPythonRuntime() map[string]interface{} {
 // detectJavaRuntime detects Java runtime information
 func (p *DevToolsPlugin) detectJavaRuntime() map[string]interface{} {
 	javaInfo := make(map[string]interface{})
+	hasJavaProject := false
 
 	// Check for Java project files
 	javaFiles := []string{"pom.xml", "build.gradle", "build.gradle.kts", "build.xml", ".java-version"}
@@ -275,15 +289,11 @@ func (p *DevToolsPlugin) detectJavaRuntime() map[string]interface{} {
 	for _, file := range javaFiles {
 		if _, err := os.Stat(file); err == nil {
 			foundFiles = append(foundFiles, file)
+			hasJavaProject = true
 		}
 	}
 	if len(foundFiles) > 0 {
 		javaInfo["config_files"] = foundFiles
-	}
-
-	// Check for JAVA_HOME
-	if javaHome := os.Getenv("JAVA_HOME"); javaHome != "" {
-		javaInfo["java_home"] = javaHome
 	}
 
 	// Check for common Java directories
@@ -292,13 +302,21 @@ func (p *DevToolsPlugin) detectJavaRuntime() map[string]interface{} {
 	for _, dir := range javaDirs {
 		if stat, err := os.Stat(dir); err == nil && stat.IsDir() {
 			foundDirs = append(foundDirs, dir)
+			hasJavaProject = true
 		}
 	}
 	if len(foundDirs) > 0 {
 		javaInfo["project_dirs"] = foundDirs
 	}
 
-	if len(javaInfo) > 0 {
+	// Only add JAVA_HOME if we have a Java project
+	if hasJavaProject {
+		if javaHome := os.Getenv("JAVA_HOME"); javaHome != "" {
+			javaInfo["java_home"] = javaHome
+		}
+	}
+
+	if hasJavaProject && len(javaInfo) > 0 {
 		return javaInfo
 	}
 	return nil
@@ -307,6 +325,7 @@ func (p *DevToolsPlugin) detectJavaRuntime() map[string]interface{} {
 // detectGoRuntime detects Go runtime information
 func (p *DevToolsPlugin) detectGoRuntime() map[string]interface{} {
 	goInfo := make(map[string]interface{})
+	hasGoProject := false
 
 	// Check for Go project files
 	goFiles := []string{"go.mod", "go.sum", "Gopkg.toml", "Gopkg.lock"}
@@ -314,27 +333,31 @@ func (p *DevToolsPlugin) detectGoRuntime() map[string]interface{} {
 	for _, file := range goFiles {
 		if _, err := os.Stat(file); err == nil {
 			foundFiles = append(foundFiles, file)
+			hasGoProject = true
 		}
 	}
 	if len(foundFiles) > 0 {
 		goInfo["config_files"] = foundFiles
 	}
 
-	// Check for GOPATH and GOROOT
-	if goPath := os.Getenv("GOPATH"); goPath != "" {
-		goInfo["gopath"] = goPath
-	}
-	if goRoot := os.Getenv("GOROOT"); goRoot != "" {
-		goInfo["goroot"] = goRoot
-	}
-
 	// Check for Go source files
 	matches, _ := filepath.Glob("*.go")
 	if len(matches) > 0 {
 		goInfo["has_go_files"] = true
+		hasGoProject = true
 	}
 
-	if len(goInfo) > 0 {
+	// Only add environment variables if we have a Go project
+	if hasGoProject {
+		if goPath := os.Getenv("GOPATH"); goPath != "" {
+			goInfo["gopath"] = goPath
+		}
+		if goRoot := os.Getenv("GOROOT"); goRoot != "" {
+			goInfo["goroot"] = goRoot
+		}
+	}
+
+	if hasGoProject && len(goInfo) > 0 {
 		return goInfo
 	}
 	return nil
