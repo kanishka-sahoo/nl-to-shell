@@ -63,9 +63,17 @@ jobs:
       run: $(go env GOPATH)/bin/golangci-lint run
 
     - name: Run unit tests
+      env:
+        OPENAI_API_KEY: "test-key-for-ci"
+        ANTHROPIC_API_KEY: "test-key-for-ci"
+        GEMINI_API_KEY: "test-key-for-ci"
       run: go test -v -race -coverprofile=coverage.out ./...
 
     - name: Run integration tests
+      env:
+        OPENAI_API_KEY: "test-key-for-ci"
+        ANTHROPIC_API_KEY: "test-key-for-ci"
+        GEMINI_API_KEY: "test-key-for-ci"
       run: go test -v -tags=integration ./...
 
     - name: Upload coverage to Codecov

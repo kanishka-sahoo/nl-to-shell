@@ -571,10 +571,11 @@ func createLLMProvider(cfg *types.Config) (interfaces.LLMProvider, error) {
 		providerName = provider
 	}
 
-	// Get provider configuration
-	providerConfig, exists := cfg.Providers[providerName]
-	if !exists {
-		return nil, fmt.Errorf("provider %s not configured", providerName)
+	// Get provider configuration using config manager (handles env vars and credential storage)
+	configManager := config.NewManager()
+	providerConfig, err := configManager.GetProviderConfig(providerName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get provider config for %s: %w", providerName, err)
 	}
 
 	// Override model if specified via CLI
@@ -584,7 +585,7 @@ func createLLMProvider(cfg *types.Config) (interfaces.LLMProvider, error) {
 
 	// Create provider using factory
 	factory := llm.NewProviderFactory()
-	return factory.CreateProvider(providerName, &providerConfig)
+	return factory.CreateProvider(providerName, providerConfig)
 }
 
 // recordResultMetrics records metrics about the command generation results
