@@ -179,9 +179,9 @@ func init() {
 	rootCmd.PersistentFlags().BoolVar(&dryRun, "dry-run", false, "Preview the command without executing it")
 	rootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "Enable verbose output for detailed information")
 	rootCmd.PersistentFlags().StringVar(&provider, "provider", "", "LLM provider to use (openai, anthropic, gemini, openrouter, ollama)")
-	rootCmd.PersistentFlags().StringVar(&model, "model", "", "Model to use for the specified provider")
-	rootCmd.PersistentFlags().BoolVar(&skipConfirmation, "skip-confirmation", false, "Skip confirmation prompts for dangerous commands (advanced users)")
-	rootCmd.PersistentFlags().BoolVar(&validateResults, "validate-results", true, "Validate command results using AI")
+	rootCmd.PersistentFlags().StringVar(&model, "model", "", "Model to use")
+	rootCmd.PersistentFlags().BoolVar(&skipConfirmation, "skip-confirmation", false, "Skip confirmation prompts")
+	rootCmd.PersistentFlags().BoolVar(&validateResults, "validate-results", true, "Validate command results")
 
 	// Add subcommands
 	rootCmd.AddCommand(generateCmd)
